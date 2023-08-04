@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RootNamespace>BindGen.NET</RootNamespace>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <AnalysisLevel>latest-recommended</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
+        <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <Version>0.0.1</Version>
+        <Title>Bindgen.NET</Title>
+        <Authors>BeanCheeseBurrito</Authors>
+        <Description>Generate C# bindings from C headers.</Description>
+        <Copyright>BeanCheeseBurrito</Copyright>
+        <PackageProjectUrl>Bindgen.NET</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/BeanCheeseBurrito/Bindgen.NET</RepositoryUrl>
+        <RepositoryType>Github</RepositoryType>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ClangSharp" Version="16.0.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.6.0" />
+    </ItemGroup>
+
+</Project>

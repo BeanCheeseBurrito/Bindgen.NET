@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bindgen.NET", "Bindgen.NET\Bindgen.NET.csproj", "{9CA59E8B-14FB-46D3-9A60-B0369A22850E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bindgen.NET.Example", "Bindgen.NET.Example\Bindgen.NET.Example.csproj", "{49F26A9C-8F50-40F0-972A-88D152DF806A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9CA59E8B-14FB-46D3-9A60-B0369A22850E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CA59E8B-14FB-46D3-9A60-B0369A22850E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CA59E8B-14FB-46D3-9A60-B0369A22850E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CA59E8B-14FB-46D3-9A60-B0369A22850E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49F26A9C-8F50-40F0-972A-88D152DF806A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49F26A9C-8F50-40F0-972A-88D152DF806A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49F26A9C-8F50-40F0-972A-88D152DF806A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49F26A9C-8F50-40F0-972A-88D152DF806A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
