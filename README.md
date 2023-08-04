@@ -52,3 +52,5 @@ BindingOptions exampleConfig = new()
 
 BindingGenerator.Generate(exampleConfig);
 ```
+
+A runnable example can be found [here](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET.Example/Program.cs).
