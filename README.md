@@ -4,10 +4,10 @@
 ## Usage
 Download the [nuget package](https://www.nuget.org/packages/Bindgen.NET).
 ```bash
-dotnet add package Bindgen.NET --version 0.0.1
+dotnet add package Bindgen.NET --version 0.0.2
 ```
 
-A runtime id is needed to resolve the clangsharp native dependencies. Your project file should like like this.
+A runtime id is needed to resolve the ClangSharp native dependencies. Your project file should like like this.
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -19,7 +19,7 @@ A runtime id is needed to resolve the clangsharp native dependencies. Your proje
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bindgen.NET" Version="0.0.1" />
+        <PackageReference Include="Bindgen.NET" Version="0.0.2" />
     </ItemGroup>
 
 </Project>

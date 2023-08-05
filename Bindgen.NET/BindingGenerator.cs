@@ -7,6 +7,9 @@ using Type = ClangSharp.Type;
 
 namespace Bindgen.NET;
 
+/// <summary>
+/// Static class for generating bindings from configuration classes.
+/// </summary>
 public static class BindingGenerator
 {
     private const string MacroPrefix = "BindgenMacro";
@@ -29,7 +32,7 @@ public static class BindingGenerator
     }
 
     /// <summary>
-    /// Generates bindings based on the values specified in the <see cref="options"/> parameter.
+    /// Generates bindings based on the values specified in the <c>options</c> parameter.
     /// </summary>
     /// <param name="options">The configuration options to use when generating bindings.</param>
     /// <returns>A string of the generated source code.</returns>
@@ -180,7 +183,7 @@ public static class BindingGenerator
         return false;
     }
 
-    public static string GenerateFixedBufferName(string name)
+    private static string GenerateFixedBufferName(string name)
     {
         return name + "_Fixed_Buffer";
     }

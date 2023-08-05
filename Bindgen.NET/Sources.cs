@@ -1,6 +1,6 @@
 namespace Bindgen.NET;
 
-public static class Sources
+internal static class Sources
 {
     // @ sign is prefixed in case a source header has a declaration with same name
     public const string VariableLoader = """

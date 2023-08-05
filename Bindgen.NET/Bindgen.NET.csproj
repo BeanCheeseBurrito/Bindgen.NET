@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <RootNamespace>BindGen.NET</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     
     <PropertyGroup>
@@ -16,7 +17,7 @@
     </PropertyGroup>
     
     <PropertyGroup>
-        <Version>0.0.1</Version>
+        <Version>0.0.2</Version>
         <Title>Bindgen.NET</Title>
         <Authors>BeanCheeseBurrito</Authors>
         <Description>Generate C# bindings from C headers.</Description>
