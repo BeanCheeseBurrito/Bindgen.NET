@@ -3,9 +3,9 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net7.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>BindGen.NET.Example</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
         <!--A runtime identifier is needed to resolve platform specific native libraries-->
         <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>

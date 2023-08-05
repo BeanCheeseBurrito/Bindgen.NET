@@ -180,10 +180,14 @@ public static class BindingGenerator
         return false;
     }
 
-    // Don't use prefixes because it's noisy and name could possibly start with an @
+    public static string GenerateFixedBufferName(string name)
+    {
+        return name + "_Fixed_Buffer";
+    }
+
     private static string GenerateExternFieldName(string name)
     {
-        return name + "_PTR";
+        return name + "_Ptr";
     }
 
     private static string GenerateTranslationUnitDecl(TranslationUnitDecl translationUnitDecl)
@@ -298,8 +302,18 @@ public static class BindingGenerator
     {
         string recordName = GetRemappedCursorName(recordDecl);
 
-        FieldDecl[] fieldsDecls = recordDecl.CursorChildren.OfType<FieldDecl>().ToArray();
-        RecordDecl[] recordFieldsDecls = recordDecl.CursorChildren.OfType<RecordDecl>().ToArray();
+        FieldDecl[] fieldsDecls = recordDecl.CursorChildren
+            .OfType<FieldDecl>()
+            .ToArray();
+
+        FieldDecl[] fixedBufferFieldDecls = recordDecl.CursorChildren
+            .OfType<FieldDecl>()
+            .Where(fieldDecl => fieldDecl.Type is ConstantArrayType)
+            .ToArray();
+
+        RecordDecl[] recordFieldsDecls = recordDecl.CursorChildren
+            .OfType<RecordDecl>()
+            .ToArray();
 
         StringBuilder fields = new();
 
@@ -308,11 +322,40 @@ public static class BindingGenerator
             if (recordDecl.IsUnion)
                 fields.AppendLine("[System.Runtime.InteropServices.FieldOffset(0)]");
 
-            fields.AppendLine(CultureInfo.InvariantCulture, $@"public {GetRemappedTypeName(fieldDecl.Type)} {GetValidIdentifier(fieldDecl.Name)};");
+            string fieldName = GetValidIdentifier(fieldDecl.Name);
+            string typeName = GetRemappedTypeName(fieldDecl.Type);
+
+            if (fieldDecl.Type is ConstantArrayType constantArrayType)
+                typeName = GenerateFixedBufferName(fieldName);
+
+            fields.AppendLine(CultureInfo.InvariantCulture, $@"public {typeName} {GetValidIdentifier(fieldDecl.Name)};");
+        }
+
+        foreach (FieldDecl fieldDecl in fixedBufferFieldDecls)
+        {
+            ConstantArrayType constantArrayType = (ConstantArrayType)fieldDecl.Type;
+
+            string fieldName = GenerateFixedBufferName(GetValidIdentifier(fieldDecl.Name));
+            string typeName = GetTypeName(constantArrayType.ElementType);
+
+            StringBuilder fixedBufferFields = new();
+
+            for (int i = 0; i < constantArrayType.Size; i++)
+                fixedBufferFields.AppendLine(CultureInfo.InvariantCulture, $"public {typeName} Item{i};");
+
+            string fixedBufferSource = $$"""
+                public partial struct {{fieldName}}
+                {
+                    {{fixedBufferFields}}
+                }
+            """;
+
+            fields.AppendLine(fixedBufferSource);
         }
 
         foreach (RecordDecl recordFieldDecl in recordFieldsDecls)
             fields.AppendLine(GenerateRecordDecl(recordFieldDecl));
+
 
         return $@"
             {(recordDecl.IsUnion ? "[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]" : "")}
