@@ -414,7 +414,7 @@ public static class BindingGenerator
                     if ({{fieldName}} != null)
                         return ref *({{typeName}}*){{fieldName}};
 
-                    @LoadExternVar(nameof({{fieldName}}), out {{fieldName}});
+                    @LoadExternVar("{{varDecl.Name}}", out {{fieldName}});
                     return ref *({{typeName}}*){{fieldName}};
                 }
             }
