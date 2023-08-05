@@ -50,6 +50,8 @@ public static class BindingGenerator
 
         if (options.TreatInputFileAsRawSourceCode)
             unsavedFiles.Add(CXUnsavedFile.Create(inputFileName, options.InputFile));
+        else if (!Path.Exists(inputFileName))
+            throw new ArgumentException($"Input file at path \"{inputFileName}\" does not exist.", nameof(options));
 
         CXIndex index = CXIndex.Create();
         CXErrorCode errorCode = CXTranslationUnit.TryParse(index, inputFileName, arguments.ToArray(), unsavedFiles.ToArray(), flags, out CXTranslationUnit handle);
@@ -260,15 +262,13 @@ public static class BindingGenerator
 
     private static string GenerateFunctionDecl(FunctionDecl functionDecl)
     {
-        string parameters = Utils.Concat((int)functionDecl.NumParams, ", ", i =>
-        {
-            ParmVarDecl parameter = functionDecl.Parameters[i];
-            return GetTypeName(parameter.Type) + " " + GetValidIdentifier(parameter.Name);
-        });
+        IEnumerable<string> parameters = functionDecl.Parameters
+            .Select(parameter => $"{GetTypeName(parameter.Type)} {GetValidIdentifier(parameter.Name)}")
+            .ToArray();
 
         return $@"
             [System.Runtime.InteropServices.DllImport(DllImportPath, CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
-            public static extern {GetTypeName(functionDecl.ReturnType)} {GetValidIdentifier(functionDecl.Name)}({parameters});
+            public static extern {GetTypeName(functionDecl.ReturnType)} {GetValidIdentifier(functionDecl.Name)}({string.Join(", ", parameters)});
         ";
     }
 
@@ -301,35 +301,38 @@ public static class BindingGenerator
 
     private static string GenerateEnumDecl(EnumDecl enumDecl)
     {
-        string enumName = GetCursorName(enumDecl);
-
-        string enums = Utils.ConcatLines(enumDecl.Decls.Count, ",\n", i =>
-        {
-            EnumConstantDecl enumConstantDecl = (EnumConstantDecl)enumDecl.Decls[i];
-            string value = enumConstantDecl.IsSigned
-                ? enumConstantDecl.InitVal.ToString(CultureInfo.InvariantCulture)
-                : enumConstantDecl.UnsignedInitVal.ToString(CultureInfo.InvariantCulture);
-            return GetValidIdentifier(enumConstantDecl.Name) + " = " + value;
-        });
+        IEnumerable<string> enums = enumDecl.Decls
+            .OfType<EnumConstantDecl>()
+            .Select(GenerateEnumConstantDecl);
 
         return $@"
-            public enum {enumName} : {GetTypeName(enumDecl.IntegerType)}
+            public enum {GetCursorName(enumDecl)} : {GetTypeName(enumDecl.IntegerType)}
             {{ 
-                {enums}
+                {string.Join(",\n", enums)}
             }}
         ";
+    }
+
+    private static string GenerateEnumConstantDecl(EnumConstantDecl enumConstantDecl)
+    {
+        string value = enumConstantDecl.IsSigned
+            ? enumConstantDecl.InitVal.ToString(CultureInfo.InvariantCulture)
+            : enumConstantDecl.UnsignedInitVal.ToString(CultureInfo.InvariantCulture);
+
+        return $"{GetValidIdentifier(enumConstantDecl.Name)} = {value}";
     }
 
     private static string GenerateEnumDeclConstants(EnumDecl enumDecl)
     {
         string enumName = GetCursorName(enumDecl);
 
-        return Utils.ConcatLines(enumDecl.Decls.Count, "\n", i =>
+        IEnumerable<string> constantFields = enumDecl.Decls.OfType<EnumConstantDecl>().Select(enumConstantDecl =>
         {
-            EnumConstantDecl enumConstantDecl = (EnumConstantDecl)enumDecl.Decls[i];
             string enumMemberName = GetValidIdentifier(enumConstantDecl.Name);
             return $"public const {enumName} {enumMemberName} = {enumName}.{enumMemberName};";
         });
+
+        return string.Join("\n", constantFields);
     }
 
     // TODO: Add binding option to allow for generating refs to extern variables
@@ -650,9 +653,9 @@ public static class BindingGenerator
             if (!_options.GenerateFunctionPointers)
                 return "System.IntPtr";
 
-            int numParams = (int)functionProtoType.NumParams;
-            string parameters = Utils.Concat(numParams + 1, ", ", i => GetTypeName(i != numParams ? functionProtoType.ParamTypes[i] : functionProtoType.ReturnType));
-            return $"delegate* unmanaged<{parameters}>";
+            List<string> parameters = functionProtoType.ParamTypes.Select(GetTypeName).ToList();
+            parameters.Add(GetTypeName(functionProtoType.ReturnType));
+            return $"delegate* unmanaged<{string.Join(", ", parameters)}>";
         }
 
         if (type is IncompleteArrayType incompleteArrayType)
