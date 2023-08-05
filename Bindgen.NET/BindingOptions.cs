@@ -79,4 +79,9 @@ public class BindingOptions
     /// If set to <c>true</c>, an unmanaged function pointer will be generated instead of an <see cref="IntPtr"/>. This defaults to <c>false</c>.
     /// </summary>
     public bool GenerateFunctionPointers { get; set; }
+
+    /// <summary>
+    /// Sets the max diagnostic level to log to the console. This defaults to <c>DiagnosticLevel.Info</c>.
+    /// </summary>
+    public DiagnosticLevel DiagnosticLevel { get; set; } = DiagnosticLevel.Info;
 }
