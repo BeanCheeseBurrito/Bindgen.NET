@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text;
 using ClangSharp;
 using ClangSharp.Interop;
@@ -8,7 +9,8 @@ namespace Bindgen.NET;
 
 public static class BindingGenerator
 {
-    private const string MacroPrefix = "_BindgenMacro_";
+    private const string MacroPrefix = "BindgenMacro";
+    private const string AnonymousPrefix = "Anonymous";
 
     private static BindingOptions _options = new ();
 
@@ -34,6 +36,8 @@ public static class BindingGenerator
     public static string Generate(BindingOptions options)
     {
         _options = options;
+
+        Diagnostic.CurrentDiagnosticLevel = options.DiagnosticLevel;
 
         string inputFileName = GetInputFileName();
 
@@ -67,7 +71,10 @@ public static class BindingGenerator
         string formattedOutput = CodeFormatter.Format(output);
 
         if (options.GenerateToFilesystem)
+        {
             File.WriteAllText(options.OutputFile, formattedOutput);
+            Diagnostic.Log(DiagnosticLevel.Info, $"Generated {Path.GetFullPath(options.OutputFile)} from {inputFileName}");
+        }
 
         translationUnit.Dispose();
         index.Dispose();
@@ -79,7 +86,7 @@ public static class BindingGenerator
 
     private static string GetInputFileName()
     {
-        return _options.TreatInputFileAsRawSourceCode ? _options.RawSourceName : _options.InputFile;
+        return _options.TreatInputFileAsRawSourceCode ? _options.RawSourceName : Path.GetFullPath(_options.InputFile);
     }
 
     // TODO: Handle errors
@@ -90,7 +97,7 @@ public static class BindingGenerator
             for (uint i = 0; i < handle.NumDiagnostics; i++)
             {
                 using CXDiagnostic diagnostic = handle.GetDiagnostic(i);
-                Console.WriteLine(diagnostic.Format(CXDiagnostic.DefaultDisplayOptions).ToString());
+                Diagnostic.Log(DiagnosticLevel.Warning, diagnostic.Format(CXDiagnostic.DefaultDisplayOptions).ToString());
             }
         }
     }
@@ -156,6 +163,21 @@ public static class BindingGenerator
     {
         cursor.Location.GetFileLocation(out CXFile file, out uint _, out uint _, out uint _);
         return string.IsNullOrEmpty(file.Name.ToString());
+    }
+
+    private static bool IsType<T>(Type type, [MaybeNullWhen(false)] out T value) where T : Type
+    {
+        if (type is T t)
+        {
+            value = t;
+            return true;
+        }
+
+        if (type is ElaboratedType elaboratedType)
+            return IsType(elaboratedType.NamedType, out value);
+
+        value = default;
+        return false;
     }
 
     // Don't use prefixes because it's noisy and name could possibly start with an @
@@ -274,7 +296,7 @@ public static class BindingGenerator
 
     private static string GenerateRecordDecl(RecordDecl recordDecl)
     {
-        string recordName = GetCursorName(recordDecl);
+        string recordName = GetRemappedCursorName(recordDecl);
 
         FieldDecl[] fieldsDecls = recordDecl.CursorChildren.OfType<FieldDecl>().ToArray();
         RecordDecl[] recordFieldsDecls = recordDecl.CursorChildren.OfType<RecordDecl>().ToArray();
@@ -282,10 +304,12 @@ public static class BindingGenerator
         StringBuilder fields = new();
 
         foreach (FieldDecl fieldDecl in fieldsDecls)
-            fields.AppendLine(CultureInfo.InvariantCulture, $@"
-                {(recordDecl.IsUnion ? "[System.Runtime.InteropServices.FieldOffset(0)]" : "")}
-                public {GetTypeName(fieldDecl.Type)} {GetValidIdentifier(fieldDecl.Name)};
-            ");
+        {
+            if (recordDecl.IsUnion)
+                fields.AppendLine("[System.Runtime.InteropServices.FieldOffset(0)]");
+
+            fields.AppendLine(CultureInfo.InvariantCulture, $@"public {GetRemappedTypeName(fieldDecl.Type)} {GetValidIdentifier(fieldDecl.Name)};");
+        }
 
         foreach (RecordDecl recordFieldDecl in recordFieldsDecls)
             fields.AppendLine(GenerateRecordDecl(recordFieldDecl));
@@ -451,29 +475,62 @@ public static class BindingGenerator
     {
         cursor.Location.GetFileLocation(out CXFile file, out uint line, out uint column, out _);
         string fileName = Path.GetFileNameWithoutExtension(file.Name.ToString());
-        return $"__Anon_{kind}_{fileName}_L{line}_C{column}";
+        return $"{AnonymousPrefix}_{kind}_{fileName}_L{line}_C{column}";
     }
 
     private static string GetCursorName(NamedDecl namedDecl)
     {
-        string name = namedDecl.Name;
-
-        bool isAnonymous =
-            string.IsNullOrWhiteSpace(name) ||
-            name.StartsWith("struct (unnamed", StringComparison.Ordinal) ||
-            name.StartsWith("union (unnamed", StringComparison.Ordinal) ||
-            name.StartsWith("enum (unnamed", StringComparison.Ordinal) ||
-            name.StartsWith("(unnamed struct", StringComparison.Ordinal) ||
-            name.StartsWith("(unnamed union", StringComparison.Ordinal) ||
-            name.StartsWith("(unnamed enum", StringComparison.Ordinal);
-
-        if (!isAnonymous)
-            return GetValidIdentifier(name);
+        string name = GetValidIdentifier(namedDecl.Name);
 
         if (namedDecl is TypeDecl typeDecl)
-            return GetAnonymousName(typeDecl, typeDecl.TypeForDecl.KindSpelling);
+        {
+            bool isAnonymous =
+                string.IsNullOrWhiteSpace(name) ||
+                name.StartsWith("struct (unnamed", StringComparison.Ordinal) ||
+                name.StartsWith("union (unnamed", StringComparison.Ordinal) ||
+                name.StartsWith("enum (unnamed", StringComparison.Ordinal) ||
+                name.StartsWith("(unnamed struct", StringComparison.Ordinal) ||
+                name.StartsWith("(unnamed union", StringComparison.Ordinal) ||
+                name.StartsWith("(unnamed enum", StringComparison.Ordinal);
 
-        return GetValidIdentifier(name);
+            return isAnonymous ? GetAnonymousName(typeDecl, typeDecl.TypeForDecl.KindSpelling) : name;
+        }
+
+        return name;
+    }
+
+    private static string GetRemappedCursorName(NamedDecl namedDecl)
+    {
+        string name = GetCursorName(namedDecl);
+
+        if (namedDecl is RecordDecl recordDecl && name.StartsWith(AnonymousPrefix, StringComparison.Ordinal) && recordDecl.Parent is RecordDecl parentRecordDecl)
+        {
+            FieldDecl? matchingField = parentRecordDecl.Fields
+                .FirstOrDefault(fieldDecl => fieldDecl.Type.CanonicalType == recordDecl.TypeForDecl.CanonicalType);
+
+            if (matchingField is not null)
+                name = $"{GetValidIdentifier(matchingField.Name)}_Anonymous_Record";
+        }
+
+        return name;
+    }
+
+    private static string GetRemappedTypeName(Type type)
+    {
+        string name = GetTypeName(type);
+
+        if (IsType<RecordType>(type, out RecordType? recordType) && name.StartsWith(AnonymousPrefix, StringComparison.Ordinal) && recordType.Decl.Parent is RecordDecl parentRecordDecl)
+        {
+            RecordDecl recordDecl = recordType.Decl;
+
+            FieldDecl? matchingField = parentRecordDecl.Fields
+                .FirstOrDefault(fieldDecl => fieldDecl.Type.CanonicalType == recordDecl.TypeForDecl.CanonicalType);
+
+            if (matchingField is not null)
+                name = $"{GetValidIdentifier(matchingField.Name)}_Anonymous_Record";
+        }
+
+        return name;
     }
 
     private static string GetTypeName(Type type)
@@ -486,7 +543,7 @@ public static class BindingGenerator
             switch (builtinType.Kind)
             {
                 case CXTypeKind.CXType_Bool:
-                    return "sbyte";
+                    return "byte";
                 case CXTypeKind.CXType_Float:
                     return "float";
                 case CXTypeKind.CXType_Double:
