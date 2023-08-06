@@ -202,9 +202,12 @@ public static class BindingGenerator
         }
 
         if (type is ElaboratedType elaboratedType)
-            return IsType(elaboratedType.NamedType, out value);
+            return IsType(elaboratedType.CanonicalType, out value);
 
-        value = default;
+        if (type is PointerType pointerType)
+            return IsType(pointerType.PointeeType, out value);
+
+            value = default;
         return false;
     }
 
@@ -294,13 +297,9 @@ public static class BindingGenerator
         }
 
         return $$"""
+            {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning disable {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
             namespace {{_options.Namespace}}
             {
-                [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1069")]
-                [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1401")]
-                [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "IDE0051")]
-                [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "IDE1006")]
-                [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "SYSLIB1054")]
                 public static unsafe partial class {{_options.Class}}
                 {
                     public const string DllImportPath = "{{_options.DllImportPath}}";
@@ -311,6 +310,7 @@ public static class BindingGenerator
                     {{(_options.GenerateExternVariables ? Sources.VariableLoader : "")}}
                 }
             }
+            {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning restore {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
         """;
     }
 
@@ -356,7 +356,9 @@ public static class BindingGenerator
             if (fieldDecl.Type is ConstantArrayType constantArrayType)
                 typeName = GenerateFixedBufferName(fieldName);
 
-            fields.AppendLine(CultureInfo.InvariantCulture, $@"public {typeName} {GetValidIdentifier(fieldDecl.Name)};");
+            bool commentFunctionPointer = IsType<FunctionProtoType>(fieldDecl.Type, out FunctionProtoType? functionProtoType) && !_options.GenerateFunctionPointers;
+
+            fields.AppendLine(CultureInfo.InvariantCulture, $@"public {typeName} {GetValidIdentifier(fieldDecl.Name)}; {(commentFunctionPointer ? "// " + GetCSharpFunctionPointer(functionProtoType!) : string.Empty)}");
         }
 
         foreach (FieldDecl fieldDecl in fixedBufferFieldDecls)
@@ -540,6 +542,13 @@ public static class BindingGenerator
         string value = GetSourceRangeContents(translationUnitHandle, sourceRange);
 
         return $"const __auto_type {MacroPrefix}{macro.Name} = {value};";
+    }
+
+    private static string GetCSharpFunctionPointer(FunctionProtoType functionProtoType)
+    {
+        List<string> parameters = functionProtoType.ParamTypes.Select(GetTypeName).ToList();
+        parameters.Add(GetTypeName(functionProtoType.ReturnType));
+        return $"delegate* unmanaged<{string.Join(", ", parameters)}>";
     }
 
     private static string GetAnonymousName(Cursor cursor, string kind)
@@ -777,14 +786,7 @@ public static class BindingGenerator
             return enumType.Decl.Name;
 
         if (type is FunctionProtoType functionProtoType)
-        {
-            if (!_options.GenerateFunctionPointers)
-                return "System.IntPtr";
-
-            List<string> parameters = functionProtoType.ParamTypes.Select(GetTypeName).ToList();
-            parameters.Add(GetTypeName(functionProtoType.ReturnType));
-            return $"delegate* unmanaged<{string.Join(", ", parameters)}>";
-        }
+            return !_options.GenerateFunctionPointers ? "System.IntPtr" : GetCSharpFunctionPointer(functionProtoType);
 
         if (type is IncompleteArrayType incompleteArrayType)
             return GetTypeName(incompleteArrayType.ElementType) + "*";

@@ -27,8 +27,9 @@ internal sealed class CodeFormatter : CSharpSyntaxRewriter
 
         SyntaxNode RewriteTrivia<TNode>(TNode oldMember, TNode _) where TNode : SyntaxNode
         {
+            string trailingTrivia = oldMember.GetTrailingTrivia().ToFullString().TrimEnd() + "\n\n";
             return current++ != memberCount - 1
-                ? oldMember.WithTrailingTrivia(SyntaxFactory.Whitespace("\n\n"))
+                ? oldMember.WithTrailingTrivia(SyntaxFactory.Whitespace(trailingTrivia))
                 : oldMember;
         }
     }

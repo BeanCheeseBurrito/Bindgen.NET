@@ -58,11 +58,6 @@ System.Console.WriteLine(generatedSource);
 // Below is the resulting bindings
 namespace ExampleNamespace
 {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1069")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1401")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "IDE0051")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "IDE1006")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "SYSLIB1054")]
     public static unsafe partial class ExampleClass
     {
         public const string DllImportPath = "libexample";

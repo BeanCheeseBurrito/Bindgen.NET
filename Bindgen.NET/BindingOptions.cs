@@ -46,9 +46,14 @@ public class BindingOptions
     public string ExternVariableImportPath { get; set; } = "LibraryPath";
 
     /// <summary>
-    /// Source file name to use for diagnostics when <see cref="TreatInputFileAsRawSourceCode"/> is set to <c>true</c>. This name can be anything and has no effect on generated code. This defaults to "RawSource_BindGen.h". <code>Example: "libheader.h"</code>
+    /// List of C# warnings to suppress with #pragma. <code>Example: { "CA1069", "CA1401" }</code>
     /// </summary>
-    public string RawSourceName { get; set; } = "RawSource_BindGen.h";
+    public List<string> SuppressedWarnings { get; set; } = new();
+
+    /// <summary>
+    /// Source file name to use for diagnostics when <see cref="TreatInputFileAsRawSourceCode"/> is set to <c>true</c>. This name can be anything and has no effect on generated code. This defaults to "BindgenInputFile.h". <code>Example: "libheader.h"</code>
+    /// </summary>
+    public string RawSourceName { get; set; } = "BindgenInputFile.h";
 
     /// <summary>
     /// If set to <c>true</c>, <see cref="InputFile"/> will be treated as raw source code in string form instead of a filepath. It is recommended that you set <see cref="RawSourceName"/> for clearer diagnostics. This defaults to <c>false</c>.
@@ -56,7 +61,7 @@ public class BindingOptions
     public bool TreatInputFileAsRawSourceCode { get; set; }
 
     /// <summary>
-    /// If set to <c>true</c>, the binding generator will include it's own built-in clang headers along with the ones specified in <see cref="SystemIncludeDirectories"/> amd <see cref="IncludeDirectories"/>. Built-in headers will be treated the same as <see cref="SystemIncludeDirectories"/>. This defaults to <c>false</c>.
+    /// If set to <c>true</c>, the binding generator will include it's own built-in clang headers along with the ones specified in <see cref="SystemIncludeDirectories"/> and <see cref="IncludeDirectories"/>. Built-in headers will be treated the same as <see cref="SystemIncludeDirectories"/>. This defaults to <c>false</c>.
     /// </summary>
     public bool IncludeBuiltInClangHeaders { get; set; }
 
