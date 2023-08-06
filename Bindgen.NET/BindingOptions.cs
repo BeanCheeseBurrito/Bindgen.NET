@@ -56,6 +56,11 @@ public class BindingOptions
     public bool TreatInputFileAsRawSourceCode { get; set; }
 
     /// <summary>
+    /// If set to <c>true</c>, the binding generator will include it's own built-in clang headers along with the ones specified in <see cref="SystemIncludeDirectories"/> amd <see cref="IncludeDirectories"/>. Built-in headers will be treated the same as <see cref="SystemIncludeDirectories"/>. This defaults to <c>false</c>.
+    /// </summary>
+    public bool IncludeBuiltInClangHeaders { get; set; }
+
+    /// <summary>
     /// If set to <c>true</c>, generated bindings will be outputted to the filesystem using the path specified in <see cref="OutputFile"/>. This defaults to <c>true</c>.
     /// </summary>
     public bool GenerateToFilesystem { get; set; } = true;

@@ -15,6 +15,8 @@ public static class BindingGenerator
     private const string MacroPrefix = "BindgenMacro";
     private const string AnonymousPrefix = "Anonymous";
 
+    private static readonly string BuiltInHeaderDirectory = Path.GetFullPath("BindgenBuiltInHeaders");
+
     private static BindingOptions _options = new ();
 
     /// <summary>
@@ -60,8 +62,19 @@ public static class BindingGenerator
         else if (!Path.Exists(inputFileName))
             throw new ArgumentException($"Input file at path \"{inputFileName}\" does not exist.", nameof(options));
 
+        if (options.IncludeBuiltInClangHeaders)
+        {
+            arguments.Add($"-I{BuiltInHeaderDirectory}");
+
+            foreach ((string fileName, string fileContents) in ClangHeaders.Headers)
+                unsavedFiles.Add(CXUnsavedFile.Create(Path.Combine(BuiltInHeaderDirectory, fileName), fileContents));
+        }
+
         CXIndex index = CXIndex.Create();
         CXErrorCode errorCode = CXTranslationUnit.TryParse(index, inputFileName, arguments.ToArray(), unsavedFiles.ToArray(), flags, out CXTranslationUnit handle);
+
+        foreach (CXUnsavedFile unsavedFile in unsavedFiles)
+            unsavedFile.Dispose();
 
         ProcessDiagnostics(errorCode, handle);
 
@@ -81,8 +94,6 @@ public static class BindingGenerator
 
         translationUnit.Dispose();
         index.Dispose();
-        foreach (CXUnsavedFile unsavedFile in unsavedFiles)
-            unsavedFile.Dispose();
 
         return formattedOutput;
     }
@@ -112,10 +123,10 @@ public static class BindingGenerator
         CXTranslationUnit translationUnitHandle = translationUnit.Handle;
 
         CXFile file = translationUnitHandle.GetFile(inputFileName);
-        ReadOnlySpan<byte> fileContents = translationUnitHandle.GetFileContents(file, out UIntPtr _);
+        ReadOnlySpan<byte> inputFileContents = translationUnitHandle.GetFileContents(file, out UIntPtr _);
 
         StringBuilder newFileBuilder = new();
-        newFileBuilder.AppendLine(Encoding.UTF8.GetString(fileContents));
+        newFileBuilder.AppendLine(Encoding.UTF8.GetString(inputFileContents));
 
         MacroDefinitionRecord[] macroDefinitionRecords = translationUnit.TranslationUnitDecl.CursorChildren
             .OfType<MacroDefinitionRecord>()
@@ -127,12 +138,22 @@ public static class BindingGenerator
         foreach (MacroDefinitionRecord macroDefinitionRecord in macroDefinitionRecords)
             newFileBuilder.AppendLine(GenerateMacroDummy(macroDefinitionRecord));
 
-        using CXUnsavedFile unsavedFile = CXUnsavedFile.Create(inputFileName, newFileBuilder.ToString());
-        CXUnsavedFile[] unsavedFiles = { unsavedFile };
-
         translationUnit.Dispose();
 
-        CXTranslationUnit handle = CXTranslationUnit.Parse(index, inputFileName, arguments.ToArray(), unsavedFiles, flags & ~CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord);
+        List<CXUnsavedFile> unsavedFiles = new();
+        unsavedFiles.Add(CXUnsavedFile.Create(inputFileName, newFileBuilder.ToString()));
+
+        if (_options.IncludeBuiltInClangHeaders)
+        {
+            foreach ((string fileName, string fileContents) in ClangHeaders.Headers)
+                unsavedFiles.Add(CXUnsavedFile.Create(Path.Combine(BuiltInHeaderDirectory, fileName), fileContents));
+        }
+
+        CXTranslationUnit handle = CXTranslationUnit.Parse(index, inputFileName, arguments.ToArray(), unsavedFiles.ToArray(), flags & ~CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord);
+
+        foreach (CXUnsavedFile unsavedFile in unsavedFiles)
+            unsavedFile.Dispose();
+
         return TranslationUnit.GetOrCreate(handle);
     }
 
@@ -155,6 +176,10 @@ public static class BindingGenerator
     {
         cursor.Location.GetFileLocation(out CXFile file, out _, out _, out _);
         string fileName = file.Name.ToString();
+
+        if (fileName.StartsWith(BuiltInHeaderDirectory, StringComparison.Ordinal))
+            return false;
+
         return _options.SystemIncludeDirectories
             .Select(Path.GetFullPath)
             .All(fullIncludeDirectory => !fileName.StartsWith(fullIncludeDirectory, StringComparison.Ordinal));
@@ -185,7 +210,7 @@ public static class BindingGenerator
 
     private static string GenerateFixedBufferName(string name)
     {
-        return name + "_Fixed_Buffer";
+        return name + "_FixedBuffer";
     }
 
     private static string GenerateExternFieldName(string name)
@@ -521,7 +546,7 @@ public static class BindingGenerator
     {
         cursor.Location.GetFileLocation(out CXFile file, out uint line, out uint column, out _);
         string fileName = Path.GetFileNameWithoutExtension(file.Name.ToString());
-        return $"{AnonymousPrefix}_{kind}_{fileName}_L{line}_C{column}";
+        return $"{AnonymousPrefix}{kind}_{fileName}_L{line}_C{column}";
     }
 
     private static string GetCursorName(NamedDecl namedDecl)
@@ -555,7 +580,7 @@ public static class BindingGenerator
                 .FirstOrDefault(fieldDecl => fieldDecl.Type.CanonicalType == recordDecl.TypeForDecl.CanonicalType);
 
             if (matchingField is not null)
-                name = $"{GetValidIdentifier(matchingField.Name)}_Anonymous_Record";
+                name = $"{GetValidIdentifier(matchingField.Name)}_AnonymousRecord";
         }
 
         return name;
@@ -573,7 +598,7 @@ public static class BindingGenerator
                 .FirstOrDefault(fieldDecl => fieldDecl.Type.CanonicalType == recordDecl.TypeForDecl.CanonicalType);
 
             if (matchingField is not null)
-                name = $"{GetValidIdentifier(matchingField.Name)}_Anonymous_Record";
+                name = $"{GetValidIdentifier(matchingField.Name)}_AnonymousRecord";
         }
 
         return name;
