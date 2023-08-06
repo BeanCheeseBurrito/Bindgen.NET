@@ -1,10 +1,14 @@
 ﻿using Bindgen.NET;
 
 const string exampleSource = """
+// Bindgen.NET has clang headers built-in
+#include <stdint.h>
+#include <stdbool.h>
+
 // Structs
 typedef struct {
-    int field1;
-    int array[4];
+    uint32_t IntField;
+    uint32_t IntArray[4];
 } ExampleStruct;
 
 // Enums
@@ -15,7 +19,7 @@ typedef enum {
 } ExampleEnum;
 
 // Functions
-ExampleStruct ExampleFunction(ExampleEnum ExampleParameter);
+bool ExampleFunction(ExampleStruct ExampleParameter);
 
 // Value-like macros
 #define Five (5)
@@ -38,6 +42,8 @@ BindingOptions exampleConfig = new()
 
     TreatInputFileAsRawSourceCode = true,
     InputFile = exampleSource,
+
+    IncludeBuiltInClangHeaders = true,
 
     GenerateToFilesystem = false,
     GenerateFunctionPointers = true,
@@ -64,23 +70,23 @@ namespace ExampleNamespace
         public static string ExternVariableImportPath { get; set; } = "libexample";
 
         [System.Runtime.InteropServices.DllImport(DllImportPath, CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
-        public static extern ExampleStruct ExampleFunction(ExampleEnum ExampleParameter);
+        public static extern byte ExampleFunction(ExampleStruct ExampleParameter);
 
         public partial struct ExampleStruct
         {
-            public int field1;
+            public uint IntField;
 
-            public array_Fixed_Buffer array;
+            public IntArray_FixedBuffer IntArray;
 
-            public partial struct array_Fixed_Buffer
+            public partial struct IntArray_FixedBuffer
             {
-                public int Item0;
+                public uint Item0;
 
-                public int Item1;
+                public uint Item1;
 
-                public int Item2;
+                public uint Item2;
 
-                public int Item3;
+                public uint Item3;
             }
         }
 
