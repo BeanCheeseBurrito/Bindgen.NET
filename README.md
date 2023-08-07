@@ -19,13 +19,13 @@ A runtime id is needed to resolve the ClangSharp native dependencies. Your proje
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bindgen.NET" Version="0.0.2" />
+        <PackageReference Include="Bindgen.NET" Version="0.0.3" />
     </ItemGroup>
 
 </Project>
 ```
 
-Configure your binding options and generate!
+Configure your [binding options](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET/BindingOptions.cs) and generate!
 
 Example:
 ```csharp
@@ -42,6 +42,7 @@ BindingOptions exampleConfig = new()
     InputFile = "path/header.h",
     OutputFile = "path/Header.cs",
     
+    IncludeBuiltInClangHeaders = true,
     IncludeDirectories = { "path/include" },
     SystemIncludeDirectories = { "path/include" },
 
