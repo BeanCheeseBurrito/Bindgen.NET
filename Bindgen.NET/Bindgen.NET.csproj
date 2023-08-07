@@ -8,16 +8,16 @@
         <RootNamespace>BindGen.NET</RootNamespace>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
-    
+
     <PropertyGroup>
         <AnalysisLevel>latest-recommended</AnalysisLevel>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
         <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
     </PropertyGroup>
-    
+
     <PropertyGroup>
-        <Version>0.0.2</Version>
+        <Version>0.0.3</Version>
         <Title>Bindgen.NET</Title>
         <Authors>BeanCheeseBurrito</Authors>
         <Description>Generate C# bindings from C headers.</Description>
