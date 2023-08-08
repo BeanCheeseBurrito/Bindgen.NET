@@ -2,19 +2,61 @@ namespace Bindgen.NET;
 
 internal static class Sources
 {
-    // @ sign is prefixed in case a source header has a declaration with same name
-    public const string VariableLoader = """
-        private static void @LoadExternVar(string variableSymbol, out void* field)
+    public const string LibraryLoader = """
+        private static void BindgenLoadLibrary()
         {
-            if (!System.Runtime.InteropServices.NativeLibrary.TryLoad(ExternVariableImportPath, out System.IntPtr libraryHandle))
-                throw new System.NullReferenceException($"Failed to load \"{ExternVariableImportPath}\" native library.");
+            string fileExtension;
 
-            if (!System.Runtime.InteropServices.NativeLibrary.TryGetExport(libraryHandle, variableSymbol, out System.IntPtr variableHandle))
+            if (System.OperatingSystem.IsWindows())
+                fileExtension = ".dll";
+            else if (System.OperatingSystem.IsMacOS())
+                fileExtension = ".dylib";
+            else if (System.OperatingSystem.IsLinux())
+                fileExtension = ".so";
+            else
+                throw new System.InvalidOperationException("Can't determine file extension for system");
+
+            string fullPath = System.IO.Path.GetFullPath(ExternVariableImportPath);
+            string fileName = System.IO.Path.GetFileName(fullPath);
+            string parentDir = fullPath.Substring(0, fullPath.Length - fileName.Length);
+
+            if (System.Runtime.InteropServices.NativeLibrary.TryLoad($"{parentDir}{fileName}", out BindgenLibraryHandle))
+                return;
+
+            if (System.Runtime.InteropServices.NativeLibrary.TryLoad($"{parentDir}{fileName}{fileExtension}", out BindgenLibraryHandle))
+                return;
+
+            if (System.Runtime.InteropServices.NativeLibrary.TryLoad($"{parentDir}lib{fileName}", out BindgenLibraryHandle))
+                return;
+
+            if (System.Runtime.InteropServices.NativeLibrary.TryLoad($"{parentDir}lib{fileName}{fileExtension}", out BindgenLibraryHandle))
+                return;
+
+            if (!fileName.StartsWith("lib"))
+                throw new System.DllNotFoundException("Unable to load library path");
+
+            string unprefixed = fileName.Substring(4);
+
+            if (System.Runtime.InteropServices.NativeLibrary.TryLoad($"{parentDir}{unprefixed}", out BindgenLibraryHandle))
+                return;
+
+            if (System.Runtime.InteropServices.NativeLibrary.TryLoad($"{parentDir}{unprefixed}{fileExtension}", out @BindgenLibraryHandle))
+                return;
+
+            throw new System.DllNotFoundException("Unable to load library path");
+        }
+    """;
+
+    public const string VariableLoader = """
+        private static void BindgenLoadExternVar(string variableSymbol, out void* field)
+        {
+            if (BindgenLibraryHandle == System.IntPtr.Zero)
+                BindgenLoadLibrary();
+
+            if (!System.Runtime.InteropServices.NativeLibrary.TryGetExport(BindgenLibraryHandle, variableSymbol, out System.IntPtr variableHandle))
                 throw new System.NullReferenceException($"Failed to load \"{variableSymbol}\" variable symbol.");
 
             field = (void*)variableHandle;
-
-            System.Runtime.InteropServices.NativeLibrary.Free(libraryHandle);
         }
     """;
 }

@@ -207,7 +207,7 @@ public static class BindingGenerator
         if (type is PointerType pointerType)
             return IsType(pointerType.PointeeType, out value);
 
-            value = default;
+        value = default;
         return false;
     }
 
@@ -296,6 +296,13 @@ public static class BindingGenerator
                 output.AppendLine(GenerateExternVarDeclProperty(varDecl));
         }
 
+        string externVariableHelpers = !_options.GenerateExternVariables ? string.Empty : $@"
+            public static string ExternVariableImportPath {{ get; set; }} = ""{_options.ExternVariableImportPath}"";
+            private static System.IntPtr BindgenLibraryHandle = System.IntPtr.Zero;
+            {Sources.LibraryLoader}
+            {Sources.VariableLoader}
+        ";
+
         return $$"""
             {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning disable {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
             namespace {{_options.Namespace}}
@@ -303,11 +310,10 @@ public static class BindingGenerator
                 public static unsafe partial class {{_options.Class}}
                 {
                     public const string DllImportPath = "{{_options.DllImportPath}}";
-                    {{(_options.GenerateExternVariables ? $"public static string ExternVariableImportPath {{ get; set; }} = \"{_options.ExternVariableImportPath}\";" : "")}}
 
                     {{output}}
 
-                    {{(_options.GenerateExternVariables ? Sources.VariableLoader : "")}}
+                    {{externVariableHelpers}}
                 }
             }
             {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning restore {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
@@ -511,7 +517,7 @@ public static class BindingGenerator
                     if ({{fieldName}} != null)
                         return ref *({{typeName}}*){{fieldName}};
 
-                    @LoadExternVar("{{varDecl.Name}}", out {{fieldName}});
+                    BindgenLoadExternVar("{{varDecl.Name}}", out {{fieldName}});
                     return ref *({{typeName}}*){{fieldName}};
                 }
             }
@@ -519,7 +525,7 @@ public static class BindingGenerator
     }
 
     // This converts value-like macros to type-inferred variables so we can get access to it's type information.
-    // The macro's constants will be generated in GenerateVarDecl().
+    // The macro's constants will be generated in GenerateMacroVarDecl().
     private static string GenerateMacroDummy(MacroDefinitionRecord macro)
     {
         if (macro.IsFunctionLike)
