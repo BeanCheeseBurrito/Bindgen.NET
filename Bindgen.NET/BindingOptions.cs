@@ -91,6 +91,11 @@ public class BindingOptions
     public bool GenerateFunctionPointers { get; set; }
 
     /// <summary>
+    /// If set to <c>true</c>, all generated method signatures will be marked with the SuppressGCTransition attribute. This defaults to <c>false</c>
+    /// </summary>
+    public bool GenerateSuppressGcTransition { get; set; }
+
+    /// <summary>
     /// Sets the max diagnostic level to log to the console. This defaults to <c>DiagnosticLevel.Info</c>.
     /// </summary>
     public DiagnosticLevel DiagnosticLevel { get; set; } = DiagnosticLevel.Info;
