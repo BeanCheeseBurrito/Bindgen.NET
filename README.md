@@ -4,7 +4,7 @@
 ## Usage
 Download the [nuget package](https://www.nuget.org/packages/Bindgen.NET).
 ```bash
-dotnet add package Bindgen.NET --version 0.0.3
+dotnet add package Bindgen.NET --version 0.0.4
 ```
 
 A runtime id is needed to resolve the ClangSharp native dependencies. Your project file should like like this.
@@ -19,7 +19,7 @@ A runtime id is needed to resolve the ClangSharp native dependencies. Your proje
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bindgen.NET" Version="0.0.3" />
+        <PackageReference Include="Bindgen.NET" Version="0.0.4" />
     </ItemGroup>
 
 </Project>
@@ -36,22 +36,31 @@ BindingOptions exampleConfig = new()
     Namespace = "ExampleNamespace",
     Class = "ExampleClass",
 
-    DllImportPath = "path/libexample.so",
-    ExternVariableImportPath = "path/libexample.so",
+    DllImportPath = "libexample",
+    
+    // Some options require manually exporting symbols
+    // Can resolve different naming combinations like DllImportAttribute
+    DllFilePaths = { "libexample", "example.so", "runtimes/linux-x64/example" },
 
+    // Pass raw source code instead
+    // TreatInputFileAsRawSourceCode = true,
     InputFile = "path/header.h",
     OutputFile = "path/Header.cs",
     
+    // Optional included built-in clang headers for portability
     IncludeBuiltInClangHeaders = true,
     IncludeDirectories = { "path/include" },
     SystemIncludeDirectories = { "path/include" },
 
     GenerateFunctionPointers = true,
     GenerateMacros = true,
-    GenerateExternVariables = true
+    GenerateExternVariables = true,
+    GenerateSuppressGcTransition = true
 };
 
-BindingGenerator.Generate(exampleConfig);
+string output = BindingGenerator.Generate(exampleConfig);
 ```
 
-A runnable example and output bindings can be found [here](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET.Example/Program.cs).
+A runnable example can be found [here](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET.Example/Program.cs).
+
+An example of generated bindings can be found in [here](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET.Example/GeneratedExample.cs).

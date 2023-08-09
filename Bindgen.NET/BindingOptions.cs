@@ -18,12 +18,12 @@ public class BindingOptions
     /// <summary>
     /// Include directories for user headers. Declarations found in these headers will have bindings generated for them.
     /// </summary>
-    public List<string> IncludeDirectories { get; set; } = new ();
+    public List<string> IncludeDirectories { get; set; } = new();
 
     /// <summary>
     /// Include directories for system/standard headers. Declarations found in these headers are ignored by the binding generator.
     /// </summary>
-    public List<string> SystemIncludeDirectories { get; set; } = new ();
+    public List<string> SystemIncludeDirectories { get; set; } = new();
 
     /// <summary>
     /// The root namespace of the generated bindings. This defaults to "Bindings"
@@ -41,9 +41,9 @@ public class BindingOptions
     public string DllImportPath { get; set; } = "LibraryPath";
 
     /// <summary>
-    /// Path to a native library that will be used to load extern variable symbols if <see cref="GenerateExternVariables"/> is set to <c>true</c>. Path is case-sensitive and must exactly match the user's filesystem. This defaults to "LibraryPath"
+    /// File paths used to load native libraries. For each provided path, it will attempt to load a library using multiple different name combinations similar to DllImportAttribute.  This property is used to resolve symbols for extern variables and function pointers only. Methods are instead resolved using <see cref="DllImportPath"/> <code>Example: { "test", "libtest", "libtest.so", "runtimes/linux-x64/libtest" }</code>
     /// </summary>
-    public string ExternVariableImportPath { get; set; } = "LibraryPath";
+    public List<string> DllFilePaths { get; set; } = new();
 
     /// <summary>
     /// List of C# warnings to suppress with #pragma. <code>Example: { "CA1069", "CA1401" }</code>
@@ -71,17 +71,12 @@ public class BindingOptions
     public bool GenerateToFilesystem { get; set; } = true;
 
     /// <summary>
-    /// If set to <c>true</c>, a file will be outputted for each individual declaration. This defaults to <c>false</c>.
-    /// </summary>
-    public bool GenerateMultipleFiles { get; set; }
-
-    /// <summary>
     /// If set to <c>true</c>, value-like macros will be generated. This defaults to <c>false</c>.
     /// </summary>
     public bool GenerateMacros { get; set; }
 
     /// <summary>
-    /// If set to <c>true</c>, extern variables will be generated. <see cref="ExternVariableImportPath"/> should be configured when using this property. This defaults to <c>false</c>.
+    /// If set to <c>true</c>, extern variables will be generated. <see cref="DllFilePaths"/> should be configured when using this property. This defaults to <c>false</c>.
     /// </summary>
     public bool GenerateExternVariables { get; set; }
 

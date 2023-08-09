@@ -221,6 +221,27 @@ public static class BindingGenerator
         return name + "_Ptr";
     }
 
+    private static string GenerateBindgenInternal()
+    {
+        string[] quotedFilePaths = _options.DllFilePaths.Select(path => "\"" + path + "\"").ToArray();
+
+        string externVariableHelpers = !_options.GenerateExternVariables ? string.Empty : $@"
+            private static System.IntPtr _libraryHandle = System.IntPtr.Zero;
+            {Sources.LibraryLoader}
+            {Sources.VariableLoader}
+        ";
+
+        return $$"""
+            private static class BindgenInternal
+            {
+                public const string DllImportPath = "{{_options.DllImportPath}}";
+                private static readonly string[] DllFilePaths = { {{string.Join(',', quotedFilePaths)}} };
+
+                {{externVariableHelpers}}
+            }
+        """;
+    }
+
     private static string GenerateTranslationUnitDecl(TranslationUnitDecl translationUnitDecl)
     {
         Cursor[] cursors = translationUnitDecl.CursorChildren
@@ -296,24 +317,14 @@ public static class BindingGenerator
                 output.AppendLine(GenerateExternVarDeclProperty(varDecl));
         }
 
-        string externVariableHelpers = !_options.GenerateExternVariables ? string.Empty : $@"
-            public static string ExternVariableImportPath {{ get; set; }} = ""{_options.ExternVariableImportPath}"";
-            private static System.IntPtr BindgenLibraryHandle = System.IntPtr.Zero;
-            {Sources.LibraryLoader}
-            {Sources.VariableLoader}
-        ";
-
         return $$"""
             {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning disable {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
             namespace {{_options.Namespace}}
             {
                 public static unsafe partial class {{_options.Class}}
                 {
-                    public const string DllImportPath = "{{_options.DllImportPath}}";
-
                     {{output}}
-
-                    {{externVariableHelpers}}
+                    {{GenerateBindgenInternal()}}
                 }
             }
             {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning restore {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
@@ -328,7 +339,7 @@ public static class BindingGenerator
 
         return $@"
             {(_options.GenerateSuppressGcTransition ? "[System.Runtime.InteropServices.SuppressGCTransition]" : string.Empty)}
-            [System.Runtime.InteropServices.DllImport(DllImportPath, CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+            [System.Runtime.InteropServices.DllImport(BindgenInternal.DllImportPath, CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
             public static extern {GetTypeName(functionDecl.ReturnType)} {GetValidIdentifier(functionDecl.Name)}({string.Join(", ", parameters)});
         ";
     }
@@ -518,7 +529,7 @@ public static class BindingGenerator
                     if ({{fieldName}} != null)
                         return ref *({{typeName}}*){{fieldName}};
 
-                    BindgenLoadExternVar("{{varDecl.Name}}", out {{fieldName}});
+                    BindgenInternal.LoadExternVar("{{varDecl.Name}}", out {{fieldName}});
                     return ref *({{typeName}}*){{fieldName}};
                 }
             }
