@@ -4,7 +4,7 @@
 ## Usage
 Download the [nuget package](https://www.nuget.org/packages/Bindgen.NET).
 ```bash
-dotnet add package Bindgen.NET --version 0.0.4
+dotnet add package Bindgen.NET --version 0.0.5
 ```
 
 A runtime id is needed to resolve the ClangSharp native dependencies. Your project file should like like this.
@@ -19,7 +19,7 @@ A runtime id is needed to resolve the ClangSharp native dependencies. Your proje
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bindgen.NET" Version="0.0.4" />
+        <PackageReference Include="Bindgen.NET" Version="0.0.5" />
     </ItemGroup>
 
 </Project>
@@ -40,14 +40,14 @@ BindingOptions exampleConfig = new()
     
     // Some options require manually exporting symbols
     // Can resolve different naming combinations like DllImportAttribute
-    DllFilePaths = { "libexample", "example.so", "runtimes/linux-x64/example" },
+    DllFilePaths = { "libexample", "example.so", "runtimes/linux-x64/native/example" },
 
     // Pass raw source code instead
     // TreatInputFileAsRawSourceCode = true,
     InputFile = "path/header.h",
     OutputFile = "path/Header.cs",
     
-    // Optional included built-in clang headers for portability
+    // Optional included built-in clang headers
     IncludeBuiltInClangHeaders = true,
     IncludeDirectories = { "path/include" },
     SystemIncludeDirectories = { "path/include" },

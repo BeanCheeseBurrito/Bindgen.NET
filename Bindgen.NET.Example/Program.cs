@@ -38,7 +38,7 @@ BindingOptions exampleConfig = new()
     Class = "ExampleClass",
 
     DllImportPath = "libexample",
-    DllFilePaths = { "libexample", "runtimes/linux-x64/libexample" },
+    DllFilePaths = { "libexample", "runtimes/linux-x64/native/libexample" },
 
     IncludeBuiltInClangHeaders = true,
 

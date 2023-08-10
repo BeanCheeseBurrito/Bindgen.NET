@@ -83,7 +83,7 @@ namespace ExampleNamespace
                 DllFilePaths = new string[]
                 {
                     "libexample",
-                    "runtimes/linux-x64/libexample"
+                    "runtimes/linux-x64/native/libexample"
                 };
             }
         }
