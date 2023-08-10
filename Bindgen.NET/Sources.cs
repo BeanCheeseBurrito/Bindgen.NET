@@ -135,10 +135,10 @@ internal static class Sources
                 foreach (string dllFilePath in DllFilePaths)
                 {
                     string fileName = System.IO.Path.GetFileName(dllFilePath);
-
+                    string parentDir = $"{dllFilePath}/..";
                     string searchDir = System.IO.Path.IsPathRooted(dllFilePath)
-                        ? System.IO.Path.GetFullPath(System.IO.Path.Combine(dllFilePath, "..")) + System.IO.Path.DirectorySeparatorChar
-                        : System.AppDomain.CurrentDomain.BaseDirectory;
+                        ? System.IO.Path.GetFullPath(parentDir) + "/"
+                        : System.IO.Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory + parentDir) + "/";
 
                     if (TryLoad($"{searchDir}{fileName}", out _libraryHandle))
                         return;
