@@ -225,20 +225,18 @@ public static class BindingGenerator
     {
         string[] quotedFilePaths = _options.DllFilePaths.Select(path => "\"" + path + "\"").ToArray();
 
-        string externVariableHelpers = !_options.GenerateExternVariables ? string.Empty : $@"
-            private static System.IntPtr _libraryHandle = System.IntPtr.Zero;
-            {Sources.LibraryLoader}
-            {Sources.VariableLoader}
-        ";
-
         return $$"""
-            private static class BindgenInternal
+            private partial class BindgenInternal
             {
                 public const string DllImportPath = "{{_options.DllImportPath}}";
-                private static readonly string[] DllFilePaths = { {{string.Join(',', quotedFilePaths)}} };
 
-                {{externVariableHelpers}}
+                static BindgenInternal()
+                {
+                    DllFilePaths = new string[] { {{string.Join(',', quotedFilePaths)}} };
+                }
             }
+
+            {{Sources.Internal}}
         """;
     }
 
@@ -529,7 +527,7 @@ public static class BindingGenerator
                     if ({{fieldName}} != null)
                         return ref *({{typeName}}*){{fieldName}};
 
-                    BindgenInternal.LoadExternVar("{{varDecl.Name}}", out {{fieldName}});
+                    BindgenInternal.LoadDllSymbol("{{varDecl.Name}}", out {{fieldName}});
                     return ref *({{typeName}}*){{fieldName}};
                 }
             }
