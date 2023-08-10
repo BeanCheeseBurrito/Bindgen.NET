@@ -39,8 +39,15 @@ BindingOptions exampleConfig = new()
     DllImportPath = "libexample",
     
     // Some options require manually exporting symbols
-    // Can resolve different naming combinations like DllImportAttribute
-    DllFilePaths = { "libexample", "example.so", "runtimes/linux-x64/native/example" },
+    // It will try different name combinations like DllImportAttribute
+    DllFilePaths = { 
+        "libexample", 
+        "example.so", 
+        // List your nuget native folders too
+        "runtimes/linux-x64/native/example",
+        "runtimes/osx-x64/native/libexample" ,
+        "runtimes/win-x64/native/libexample.dll" 
+    },
 
     // Pass raw source code instead
     // TreatInputFileAsRawSourceCode = true,
