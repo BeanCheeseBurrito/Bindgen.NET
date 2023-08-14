@@ -193,6 +193,32 @@ public static class BindingGenerator
         return string.IsNullOrEmpty(file.Name.ToString());
     }
 
+    private static bool RecordHasDefinition(RecordDecl recordDecl)
+    {
+        while (!recordDecl.IsThisDeclarationADefinition)
+        {
+            if (recordDecl.Definition == null)
+                return false;
+
+            recordDecl = recordDecl.Definition;
+        }
+
+        return true;
+    }
+
+    private static RecordDecl GetRecordDefinition(RecordDecl recordDecl)
+    {
+        while (!recordDecl.IsThisDeclarationADefinition)
+        {
+            if (recordDecl.Definition == null)
+                break;
+
+            recordDecl = recordDecl.Definition;
+        }
+
+        return recordDecl;
+    }
+
     private static bool IsType<T>(Type type, [MaybeNullWhen(false)] out T value) where T : Type
     {
         if (type is T t)
@@ -243,7 +269,7 @@ public static class BindingGenerator
     private static string GenerateTranslationUnitDecl(TranslationUnitDecl translationUnitDecl)
     {
         Cursor[] cursors = translationUnitDecl.CursorChildren
-            .Where(cursor => cursor is LinkageSpecDecl or FunctionDecl or RecordDecl or EnumDecl or VarDecl)
+            .Where(cursor => cursor is FunctionDecl or RecordDecl or EnumDecl or VarDecl)
             .Where(cursor => !cursor.Location.IsInSystemHeader)
             .Where(IsUserInclude)
             .ToArray();
@@ -255,14 +281,9 @@ public static class BindingGenerator
 
         RecordDecl[] recordDecls = cursors
             .OfType<RecordDecl>()
-            .Where(recordDecl => recordDecl.Decls.Count != 0)
             .OrderBy(x => x.Name)
-            .ToArray();
-
-        RecordDecl[] opaqueRecordDecls = cursors
-            .OfType<RecordDecl>()
-            .Where(recordDecl => recordDecl.Decls.Count == 0)
-            .OrderBy(x => x.Name)
+            .GroupBy(x => x.Name)
+            .Select(x => x.First())
             .ToArray();
 
         EnumDecl[] enumDecls = cursors
@@ -289,9 +310,6 @@ public static class BindingGenerator
             output.AppendLine(GenerateFunctionDecl(functionDecl));
 
         foreach (RecordDecl recordDecl in recordDecls)
-            output.AppendLine(GenerateRecordDecl(recordDecl));
-
-        foreach (RecordDecl recordDecl in opaqueRecordDecls)
             output.AppendLine(GenerateRecordDecl(recordDecl));
 
         foreach (EnumDecl enumDecl in enumDecls)
@@ -344,6 +362,9 @@ public static class BindingGenerator
 
     private static string GenerateRecordDecl(RecordDecl recordDecl)
     {
+        if (RecordHasDefinition(recordDecl) && !recordDecl.IsThisDeclarationADefinition)
+            return GenerateRecordDecl(GetRecordDefinition(recordDecl));
+
         string recordName = GetRemappedCursorName(recordDecl);
 
         FieldDecl[] fieldsDecls = recordDecl.CursorChildren
