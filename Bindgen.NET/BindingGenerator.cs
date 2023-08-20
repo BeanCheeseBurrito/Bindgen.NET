@@ -252,13 +252,13 @@ public static class BindingGenerator
         string[] quotedFilePaths = _options.DllFilePaths.Select(path => "\"" + path + "\"").ToArray();
 
         return $$"""
-            private partial class BindgenInternal
+            public partial class BindgenInternal
             {
                 public const string DllImportPath = "{{_options.DllImportPath}}";
 
                 static BindgenInternal()
                 {
-                    DllFilePaths = new string[] { {{string.Join(',', quotedFilePaths)}} };
+                    DllFilePaths = new System.Collections.Generic.List<string> { {{string.Join(',', quotedFilePaths)}} };
                 }
             }
 
@@ -334,6 +334,7 @@ public static class BindingGenerator
         }
 
         return $$"""
+            #nullable enable
             {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning disable {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
             namespace {{_options.Namespace}}
             {
@@ -344,6 +345,7 @@ public static class BindingGenerator
                 }
             }
             {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning restore {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
+            #nullable disable
         """;
     }
 

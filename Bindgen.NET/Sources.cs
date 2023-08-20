@@ -4,49 +4,49 @@ internal static class Sources
 {
     public const string Internal = """
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "SYSLIB1054")]
-        private partial class BindgenInternal
+        public partial class BindgenInternal
         {
-            private static readonly string[] DllFilePaths;
+            public static readonly System.Collections.Generic.List<string> DllFilePaths;
 
-            private static System.IntPtr _libraryHandle = System.IntPtr.Zero;
+            public static System.IntPtr _libraryHandle = System.IntPtr.Zero;
 
-            private static bool IsLinux => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
+            public static bool IsLinux => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
 
-            private static bool IsOsx => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX);
+            public static bool IsOsx => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX);
 
-            private static bool IsWindows => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+            public static bool IsWindows => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
 
             [System.Runtime.InteropServices.DllImport("libc", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlopen")]
-            private static extern System.IntPtr LoadLibraryLinux(string? path, int flags);
+            public static extern System.IntPtr LoadLibraryLinux(string? path, int flags);
 
             [System.Runtime.InteropServices.DllImport("libdl", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlopen")]
-            private static extern System.IntPtr LoadLibraryOsx(string? path, int flags);
+            public static extern System.IntPtr LoadLibraryOsx(string? path, int flags);
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "LoadLibrary")]
-            private static extern System.IntPtr LoadLibraryWindows(string path);
+            public static extern System.IntPtr LoadLibraryWindows(string path);
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "GetModuleHandle")]
-            private static extern System.IntPtr GetModuleHandle(string? name);
+            public static extern System.IntPtr GetModuleHandle(string? name);
 
             [System.Runtime.InteropServices.DllImport("libc", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlsym")]
-            private static extern System.IntPtr GetExportLinux(System.IntPtr handle, string name);
+            public static extern System.IntPtr GetExportLinux(System.IntPtr handle, string name);
 
             [System.Runtime.InteropServices.DllImport("libdl", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlsym")]
-            private static extern System.IntPtr GetExportOsx(System.IntPtr handle, string name);
+            public static extern System.IntPtr GetExportOsx(System.IntPtr handle, string name);
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "GetProcAddress")]
-            private static extern System.IntPtr GetExportWindows(System.IntPtr handle, string name);
+            public static extern System.IntPtr GetExportWindows(System.IntPtr handle, string name);
 
             [System.Runtime.InteropServices.DllImport("libc", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlerror")]
-            private static extern byte* GetLastErrorLinux();
+            public static extern byte* GetLastErrorLinux();
 
             [System.Runtime.InteropServices.DllImport("libdl", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlerror")]
-            private static extern byte* GetLastErrorOsx();
+            public static extern byte* GetLastErrorOsx();
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "GetLastError")]
-            private static extern int GetLastErrorWindows();
+            public static extern int GetLastErrorWindows();
 
-            private static bool TryLoad(string path, out System.IntPtr handle)
+            public static bool TryLoad(string path, out System.IntPtr handle)
             {
         #if NET5_0_OR_GREATER
                 return System.Runtime.InteropServices.NativeLibrary.TryLoad(path, out handle);
@@ -64,7 +64,7 @@ internal static class Sources
         #endif
             }
 
-            private static System.IntPtr GetExport(string symbol)
+            public static System.IntPtr GetExport(string symbol)
             {
         #if NET5_0_OR_GREATER
                 return System.Runtime.InteropServices.NativeLibrary.GetExport(_libraryHandle, symbol);
@@ -119,7 +119,7 @@ internal static class Sources
         #endif
             }
 
-            private static void ResolveLibrary()
+            public static void ResolveLibrary()
             {
                 string fileExtension;
 
