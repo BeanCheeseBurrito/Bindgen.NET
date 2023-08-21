@@ -875,7 +875,7 @@ public static class BindingGenerator
             return GetTypeName(constantArrayType.ElementType) + "*";
 
         if (type is ElaboratedType elaboratedType)
-            return GetTypeName(elaboratedType.CanonicalType);
+            return elaboratedType.AsString == "va_list" ? "void*" : GetTypeName(elaboratedType.CanonicalType);
 
         if (type is EnumType enumType)
             return enumType.Decl.Name;
@@ -895,13 +895,7 @@ public static class BindingGenerator
         }
 
         if (type is RecordType recordType)
-        {
-            return recordType.Decl.Name switch
-            {
-                "__va_list_tag" => "void",
-                _ => GetCursorName(recordType.Decl)
-            };
-        }
+            return GetCursorName(recordType.Decl);
 
         return "UNHANDLED_TYPE";
     }
