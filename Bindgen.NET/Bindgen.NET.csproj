@@ -17,13 +17,13 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Version>0.0.7</Version>
+        <Version>0.0.8</Version>
         <Title>Bindgen.NET</Title>
         <Authors>BeanCheeseBurrito</Authors>
         <Description>Generate C# bindings from C headers.</Description>
         <Copyright>BeanCheeseBurrito</Copyright>
         <PackageProjectUrl>Bindgen.NET</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/LICENSE</PackageLicenseUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryUrl>https://github.com/BeanCheeseBurrito/Bindgen.NET</RepositoryUrl>
         <RepositoryType>Github</RepositoryType>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>

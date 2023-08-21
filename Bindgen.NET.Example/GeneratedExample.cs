@@ -15,7 +15,7 @@ namespace ExampleNamespace
             public fixed uint array[4];
         }
 
-        public enum example_enum_t : uint
+        public enum example_enum_t : int
         {
             red = 0,
             green = 1,

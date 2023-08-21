@@ -4,7 +4,7 @@
 ## Usage
 Download the [nuget package](https://www.nuget.org/packages/Bindgen.NET).
 ```bash
-dotnet add package Bindgen.NET --version 0.0.6
+dotnet add package Bindgen.NET --version 0.0.8
 ```
 
 A runtime id is needed to resolve the ClangSharp native dependencies. Your project file should like like this.
@@ -19,7 +19,7 @@ A runtime id is needed to resolve the ClangSharp native dependencies. Your proje
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bindgen.NET" Version="0.0.6" />
+        <PackageReference Include="Bindgen.NET" Version="0.0.8" />
     </ItemGroup>
 
 </Project>
