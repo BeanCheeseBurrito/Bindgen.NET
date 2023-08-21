@@ -493,14 +493,21 @@ public static class BindingGenerator
 
     private static string GenerateEnumDecl(EnumDecl enumDecl)
     {
-        IEnumerable<string> enums = enumDecl.Decls
-            .OfType<EnumConstantDecl>()
-            .Select(GenerateEnumConstantDecl);
+        List<string> enumMembers = new ();
+        bool hasNegatives = false;
+
+        foreach (EnumConstantDecl enumConstant in enumDecl.Enumerators)
+        {
+            if (enumConstant.IsNegative)
+                hasNegatives = true;
+
+            enumMembers.Add(GenerateEnumConstantDecl(enumConstant));
+        }
 
         return $@"
-            public enum {GetCursorName(enumDecl)} : {GetTypeName(enumDecl.IntegerType)}
+            public enum {GetCursorName(enumDecl)} : {GetIntegerName(enumDecl.IntegerType.Handle.SizeOf, !hasNegatives, "INVALID_ENUM_INTEGER")}
             {{ 
-                {string.Join(",\n", enums)}
+                {string.Join(",\n", enumMembers)}
             }}
         ";
     }
@@ -674,6 +681,35 @@ public static class BindingGenerator
         return name;
     }
 
+    private static string GetSignedIntegerName(long size, string? error = null)
+    {
+        return size switch
+        {
+            1 => "sbyte",
+            2 => "short",
+            4 => "int",
+            8 => "long",
+            _ => error ?? "INVALID_SIGNED_INTEGER"
+        };
+    }
+
+    private static string GetUnsignedIntegerName(long size, string? error = null)
+    {
+        return size switch
+        {
+            1 => "byte",
+            2 => "ushort",
+            4 => "uint",
+            8 => "ulong",
+            _ => error ?? "INVALID_UNSIGNED_INTEGER"
+        };
+    }
+
+    private static string GetIntegerName(long size, bool signed, string? error = null)
+    {
+        return signed ? GetSignedIntegerName(size, error) : GetUnsignedIntegerName(size, error);
+    }
+
     private static string GetRemappedCursorName(NamedDecl namedDecl)
     {
         string name = GetCursorName(namedDecl);
@@ -734,38 +770,20 @@ public static class BindingGenerator
                 case CXTypeKind.CXType_SChar:
                 case CXTypeKind.CXType_UChar:
                 case CXTypeKind.CXType_WChar:
-                    return builtinType.Handle.SizeOf switch
-                    {
-                        1 => builtinType.Handle.IsSigned ? "sbyte" : "byte",
-                        2 => builtinType.Handle.IsSigned ? "short" : "ushort",
-                        4 => builtinType.Handle.IsSigned ? "int" : "uint",
-                        8 => builtinType.Handle.IsSigned ? "long" : "ulong",
-                        _ => $"INVALID_CHAR_{builtinType.Kind}"
-                    };
+                    return GetIntegerName(
+                        builtinType.Handle.SizeOf,
+                        builtinType.Handle.IsSigned,
+                        $"INVALID_CHAR_{builtinType.Kind}");
                 case CXTypeKind.CXType_Short:
                 case CXTypeKind.CXType_Int:
                 case CXTypeKind.CXType_Long:
                 case CXTypeKind.CXType_LongLong:
-                    return builtinType.Handle.SizeOf switch
-                    {
-                        1 => "sbyte",
-                        2 => "short",
-                        4 => "int",
-                        8 => "long",
-                        _ => $"INVALID_SIGNED_INTEGER_{builtinType.Kind}_SIZEOF_{builtinType.Handle.SizeOf}"
-                    };
+                    return GetSignedIntegerName(builtinType.Handle.SizeOf, $"INVALID_SIGNED_INTEGER_{builtinType.Kind}_SIZEOF_{builtinType.Handle.SizeOf}");
                 case CXTypeKind.CXType_UShort:
                 case CXTypeKind.CXType_UInt:
                 case CXTypeKind.CXType_ULong:
                 case CXTypeKind.CXType_ULongLong:
-                    return builtinType.Handle.SizeOf switch
-                    {
-                        1 => "byte",
-                        2 => "ushort",
-                        4 => "uint",
-                        8 => "ulong",
-                        _ => $"INVALID_UNSIGNED_INTEGER_{builtinType.Kind}_SIZEOF_{builtinType.Handle.SizeOf}"
-                    };
+                    return GetUnsignedIntegerName(builtinType.Handle.SizeOf, $"INVALID_UNSIGNED_INTEGER_{builtinType.Kind}_SIZEOF_{builtinType.Handle.SizeOf}");
                 case CXTypeKind.CXType_Invalid:
                 case CXTypeKind.CXType_Unexposed:
                 case CXTypeKind.CXType_UInt128:
