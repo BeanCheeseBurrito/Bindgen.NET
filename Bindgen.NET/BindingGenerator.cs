@@ -237,6 +237,28 @@ public static class BindingGenerator
         return false;
     }
 
+    private static bool IsSupportedFixedSizedBufferType(string typeName)
+    {
+        switch (typeName)
+        {
+            case "bool":
+            case "byte":
+            case "char":
+            case "double":
+            case "float":
+            case "int":
+            case "long":
+            case "sbyte":
+            case "short":
+            case "ushort":
+            case "uint":
+            case "ulong":
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private static string GenerateFixedBufferName(string name)
     {
         return name + "_FixedBuffer";
@@ -376,6 +398,7 @@ public static class BindingGenerator
         FieldDecl[] fixedBufferFieldDecls = recordDecl.CursorChildren
             .OfType<FieldDecl>()
             .Where(fieldDecl => fieldDecl.Type is ConstantArrayType)
+            .Where(fieldDecl => !IsSupportedFixedSizedBufferType(GetTypeName(((ConstantArrayType)fieldDecl.Type).ElementType)))
             .ToArray();
 
         RecordDecl[] recordFieldsDecls = recordDecl.CursorChildren
@@ -392,12 +415,18 @@ public static class BindingGenerator
             string fieldName = GetValidIdentifier(fieldDecl.Name);
             string typeName = GetRemappedTypeName(fieldDecl.Type);
 
-            if (fieldDecl.Type is ConstantArrayType constantArrayType)
+            if (fieldDecl.Type is ConstantArrayType constantArrayType && IsSupportedFixedSizedBufferType(GetTypeName(constantArrayType.ElementType)))
+            {
+                fields.AppendLine(CultureInfo.InvariantCulture, $"public fixed {GetTypeName(constantArrayType.ElementType)} {GetValidIdentifier(fieldDecl.Name)}[{constantArrayType.Size}];");
+                continue;
+            }
+
+            if (fieldDecl.Type is ConstantArrayType)
                 typeName = GenerateFixedBufferName(fieldName);
 
             bool commentFunctionPointer = IsType<FunctionProtoType>(fieldDecl.Type, out FunctionProtoType? functionProtoType) && !_options.GenerateFunctionPointers;
 
-            fields.AppendLine(CultureInfo.InvariantCulture, $@"public {typeName} {GetValidIdentifier(fieldDecl.Name)}; {(commentFunctionPointer ? "// " + GetCSharpFunctionPointer(functionProtoType!) : string.Empty)}");
+            fields.AppendLine(CultureInfo.InvariantCulture, $"public {typeName} {GetValidIdentifier(fieldDecl.Name)}; {(commentFunctionPointer ? "// " + GetCSharpFunctionPointer(functionProtoType!) : string.Empty)}");
         }
 
         foreach (FieldDecl fieldDecl in fixedBufferFieldDecls)
@@ -406,16 +435,43 @@ public static class BindingGenerator
 
             string fieldName = GenerateFixedBufferName(GetValidIdentifier(fieldDecl.Name));
             string typeName = GetTypeName(constantArrayType.ElementType);
+            int arraySize = (int)constantArrayType.Size;
 
             StringBuilder fixedBufferFields = new();
 
-            for (int i = 0; i < constantArrayType.Size; i++)
+            for (int i = 0; i < arraySize; i++)
                 fixedBufferFields.AppendLine(CultureInfo.InvariantCulture, $"public {typeName} Item{i};");
+
+            string indexer;
+
+            if (IsType(constantArrayType.ElementType, out PointerType _))
+                indexer = $$"""
+                    public ref {{typeName}} this[int index]
+                    {
+                        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+                        get
+                        {
+                            if (index >= 16)
+                                throw new System.ArgumentOutOfRangeException($"Index {index} is out of range.");
+
+                            fixed ({{typeName}}* pThis = &Item0)
+                                return ref pThis[index];
+                        }
+                    }
+                """;
+            else
+                indexer = $$"""
+                    public ref {{typeName}} this[int index] => ref AsSpan()[index];
+
+                    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+                    public System.Span<{{typeName}}> AsSpan() => System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref Item0, {{arraySize}});
+                """;
 
             string fixedBufferSource = $$"""
                 public partial struct {{fieldName}}
                 {
                     {{fixedBufferFields}}
+                    {{indexer}}
                 }
             """;
 

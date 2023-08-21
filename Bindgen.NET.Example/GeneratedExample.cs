@@ -1,3 +1,4 @@
+#nullable enable
 #pragma warning disable CA1069
 namespace ExampleNamespace
 {
@@ -11,18 +12,7 @@ namespace ExampleNamespace
         {
             public uint integer;
 
-            public array_FixedBuffer array;
-
-            public partial struct array_FixedBuffer
-            {
-                public uint Item0;
-
-                public uint Item1;
-
-                public uint Item2;
-
-                public uint Item3;
-            }
+            public fixed uint array[4];
         }
 
         public enum example_enum_t : uint
@@ -74,13 +64,13 @@ namespace ExampleNamespace
             }
         }
 
-        private partial class BindgenInternal
+        public partial class BindgenInternal
         {
             public const string DllImportPath = "libexample";
 
             static BindgenInternal()
             {
-                DllFilePaths = new string[]
+                DllFilePaths = new System.Collections.Generic.List<string>
                 {
                     "libexample",
                     "runtimes/linux-x64/native/libexample"
@@ -89,49 +79,49 @@ namespace ExampleNamespace
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "SYSLIB1054")]
-        private partial class BindgenInternal
+        public partial class BindgenInternal
         {
-            private static readonly string[] DllFilePaths;
+            public static readonly System.Collections.Generic.List<string> DllFilePaths;
 
-            private static System.IntPtr _libraryHandle = System.IntPtr.Zero;
+            public static System.IntPtr _libraryHandle = System.IntPtr.Zero;
 
-            private static bool IsLinux => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
+            public static bool IsLinux => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
 
-            private static bool IsOsx => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX);
+            public static bool IsOsx => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX);
 
-            private static bool IsWindows => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+            public static bool IsWindows => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
 
             [System.Runtime.InteropServices.DllImport("libc", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlopen")]
-            private static extern System.IntPtr LoadLibraryLinux(string? path, int flags);
+            public static extern System.IntPtr LoadLibraryLinux(string? path, int flags);
 
             [System.Runtime.InteropServices.DllImport("libdl", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlopen")]
-            private static extern System.IntPtr LoadLibraryOsx(string? path, int flags);
+            public static extern System.IntPtr LoadLibraryOsx(string? path, int flags);
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "LoadLibrary")]
-            private static extern System.IntPtr LoadLibraryWindows(string path);
+            public static extern System.IntPtr LoadLibraryWindows(string path);
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "GetModuleHandle")]
-            private static extern System.IntPtr GetModuleHandle(string? name);
+            public static extern System.IntPtr GetModuleHandle(string? name);
 
             [System.Runtime.InteropServices.DllImport("libc", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlsym")]
-            private static extern System.IntPtr GetExportLinux(System.IntPtr handle, string name);
+            public static extern System.IntPtr GetExportLinux(System.IntPtr handle, string name);
 
             [System.Runtime.InteropServices.DllImport("libdl", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlsym")]
-            private static extern System.IntPtr GetExportOsx(System.IntPtr handle, string name);
+            public static extern System.IntPtr GetExportOsx(System.IntPtr handle, string name);
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "GetProcAddress")]
-            private static extern System.IntPtr GetExportWindows(System.IntPtr handle, string name);
+            public static extern System.IntPtr GetExportWindows(System.IntPtr handle, string name);
 
             [System.Runtime.InteropServices.DllImport("libc", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlerror")]
-            private static extern byte* GetLastErrorLinux();
+            public static extern byte* GetLastErrorLinux();
 
             [System.Runtime.InteropServices.DllImport("libdl", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "dlerror")]
-            private static extern byte* GetLastErrorOsx();
+            public static extern byte* GetLastErrorOsx();
 
             [System.Runtime.InteropServices.DllImport("kernel32", CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall, CharSet = System.Runtime.InteropServices.CharSet.Ansi, EntryPoint = "GetLastError")]
-            private static extern int GetLastErrorWindows();
+            public static extern int GetLastErrorWindows();
 
-            private static bool TryLoad(string path, out System.IntPtr handle)
+            public static bool TryLoad(string path, out System.IntPtr handle)
             {
 #if NET5_0_OR_GREATER
             return System.Runtime.InteropServices.NativeLibrary.TryLoad(path, out handle);
@@ -147,7 +137,7 @@ namespace ExampleNamespace
 #endif
             }
 
-            private static System.IntPtr GetExport(string symbol)
+            public static System.IntPtr GetExport(string symbol)
             {
 #if NET5_0_OR_GREATER
             return System.Runtime.InteropServices.NativeLibrary.GetExport(_libraryHandle, symbol);
@@ -192,7 +182,7 @@ namespace ExampleNamespace
 #endif
             }
 
-            private static void ResolveLibrary()
+            public static void ResolveLibrary()
             {
                 string fileExtension;
                 if (IsLinux)
@@ -206,7 +196,8 @@ namespace ExampleNamespace
                 foreach (string dllFilePath in DllFilePaths)
                 {
                     string fileName = System.IO.Path.GetFileName(dllFilePath);
-                    string searchDir = System.IO.Path.IsPathRooted(dllFilePath) ? System.IO.Path.GetFullPath(System.IO.Path.Combine(dllFilePath, "..")) + System.IO.Path.DirectorySeparatorChar : System.AppDomain.CurrentDomain.BaseDirectory;
+                    string parentDir = $"{dllFilePath}/..";
+                    string searchDir = System.IO.Path.IsPathRooted(dllFilePath) ? System.IO.Path.GetFullPath(parentDir) + "/" : System.IO.Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory + parentDir) + "/";
                     if (TryLoad($"{searchDir}{fileName}", out _libraryHandle))
                         return;
                     if (TryLoad($"{searchDir}{fileName}{fileExtension}", out _libraryHandle))
@@ -246,3 +237,4 @@ namespace ExampleNamespace
     }
 }
 #pragma warning restore CA1069
+#nullable disable
