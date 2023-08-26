@@ -893,7 +893,14 @@ public static class BindingGenerator
             return GetTypeName(constantArrayType.ElementType) + "*";
 
         if (type is ElaboratedType elaboratedType)
-            return elaboratedType.AsString == "va_list" ? "void*" : GetTypeName(elaboratedType.CanonicalType);
+        {
+            return elaboratedType.AsString switch
+            {
+                "size_t" => "System.IntPtr",
+                "va_list" => "void*",
+                _ => GetTypeName(elaboratedType.CanonicalType)
+            };
+        }
 
         if (type is EnumType enumType)
             return enumType.Decl.Name;

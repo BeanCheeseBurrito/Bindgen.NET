@@ -1,10 +1,13 @@
 # Bindgen.NET
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](https://github.com/SanderMertens/flecs/blob/master/LICENSE)
+[![Nuget](https://img.shields.io/nuget/v/Bindgen.NET?style=for-the-badge)](https://www.nuget.org/packages/Bindgen.NET/)
+
 **WORK IN PROGRESS**
 
 ## Usage
 Download the [nuget package](https://www.nuget.org/packages/Bindgen.NET).
-```bash
-dotnet add package Bindgen.NET --version 0.0.8
+```console
+dotnet add package Bindgen.NET --version *-*
 ```
 
 A runtime id is needed to resolve the ClangSharp native dependencies. Your project file should like like this.
@@ -19,7 +22,7 @@ A runtime id is needed to resolve the ClangSharp native dependencies. Your proje
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bindgen.NET" Version="0.0.8" />
+        <PackageReference Include="Bindgen.NET" Version="*-*" />
     </ItemGroup>
 
 </Project>
