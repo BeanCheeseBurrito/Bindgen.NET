@@ -604,20 +604,7 @@ public static class BindingGenerator
         string fieldName = GenerateExternFieldName(validName);
 
         // We can't use Unsafe.AsRef<T>(void*) because T can't be a pointer.
-        return $$"""
-            public static ref {{typeName}} {{validName}}
-            {
-                [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-                get
-                {
-                    if ({{fieldName}} != null)
-                        return ref *({{typeName}}*){{fieldName}};
-
-                    BindgenInternal.LoadDllSymbol("{{varDecl.Name}}", out {{fieldName}});
-                    return ref *({{typeName}}*){{fieldName}};
-                }
-            }
-        """;
+        return $"public static ref {typeName} {validName} => ref *({typeName}*)({fieldName} == null ? BindgenInternal.LoadDllSymbol(\"{varDecl.Name}\", out {fieldName}) : {fieldName});";
     }
 
     // This converts value-like macros to type-inferred variables so we can get access to it's type information.

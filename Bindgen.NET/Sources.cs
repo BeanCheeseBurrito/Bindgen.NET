@@ -176,12 +176,12 @@ internal static class Sources
         #endif
             }
 
-            public static void LoadDllSymbol(string variableSymbol, out void* field)
+            public static void* LoadDllSymbol(string variableSymbol, out void* field)
             {
                 if (_libraryHandle == System.IntPtr.Zero)
                     ResolveLibrary();
 
-                field = (void*)GetExport(variableSymbol);
+                return field = (void*)GetExport(variableSymbol);
             }
         }
     """;

@@ -40,29 +40,9 @@ namespace ExampleNamespace
 
         private static void* extern_struct_Ptr;
 
-        public static ref void* extern_pointer
-        {
-            [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                if (extern_pointer_Ptr != null)
-                    return ref *(void**)extern_pointer_Ptr;
-                BindgenInternal.LoadDllSymbol("extern_pointer", out extern_pointer_Ptr);
-                return ref *(void**)extern_pointer_Ptr;
-            }
-        }
+        public static ref void* extern_pointer => ref *(void**)(extern_pointer_Ptr == null ? BindgenInternal.LoadDllSymbol("extern_pointer", out extern_pointer_Ptr) : extern_pointer_Ptr);
 
-        public static ref example_struct_t extern_struct
-        {
-            [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                if (extern_struct_Ptr != null)
-                    return ref *(example_struct_t*)extern_struct_Ptr;
-                BindgenInternal.LoadDllSymbol("extern_struct", out extern_struct_Ptr);
-                return ref *(example_struct_t*)extern_struct_Ptr;
-            }
-        }
+        public static ref example_struct_t extern_struct => ref *(example_struct_t*)(extern_struct_Ptr == null ? BindgenInternal.LoadDllSymbol("extern_struct", out extern_struct_Ptr) : extern_struct_Ptr);
 
         public partial class BindgenInternal
         {
@@ -227,11 +207,11 @@ namespace ExampleNamespace
 #endif
             }
 
-            public static void LoadDllSymbol(string variableSymbol, out void* field)
+            public static void* LoadDllSymbol(string variableSymbol, out void* field)
             {
                 if (_libraryHandle == System.IntPtr.Zero)
                     ResolveLibrary();
-                field = (void*)GetExport(variableSymbol);
+                return field = (void*)GetExport(variableSymbol);
             }
         }
     }
