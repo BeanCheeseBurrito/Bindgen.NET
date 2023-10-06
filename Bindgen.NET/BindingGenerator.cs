@@ -237,6 +237,19 @@ public static class BindingGenerator
         return false;
     }
 
+    private static int GetConstantArraySize(ConstantArrayType constantArrayType)
+    {
+        long size = constantArrayType.Size;
+
+        while (constantArrayType.ElementType is ConstantArrayType elementType)
+        {
+            size *= elementType.Size;
+            constantArrayType = elementType;
+        }
+
+        return (int)size;
+    }
+
     private static bool IsSupportedFixedSizedBufferType(string typeName)
     {
         switch (typeName)
@@ -417,7 +430,8 @@ public static class BindingGenerator
 
             if (fieldDecl.Type is ConstantArrayType constantArrayType && IsSupportedFixedSizedBufferType(GetTypeName(constantArrayType.ElementType)))
             {
-                fields.AppendLine(CultureInfo.InvariantCulture, $"public fixed {GetTypeName(constantArrayType.ElementType)} {GetValidIdentifier(fieldDecl.Name)}[{constantArrayType.Size}];");
+                int size = GetConstantArraySize(constantArrayType);
+                fields.AppendLine(CultureInfo.InvariantCulture, $"public fixed {GetTypeName(constantArrayType.ElementType)} {GetValidIdentifier(fieldDecl.Name)}[{size}];");
                 continue;
             }
 
@@ -435,7 +449,7 @@ public static class BindingGenerator
 
             string fieldName = GenerateFixedBufferName(GetValidIdentifier(fieldDecl.Name));
             string typeName = GetTypeName(constantArrayType.ElementType);
-            int arraySize = (int)constantArrayType.Size;
+            int arraySize = GetConstantArraySize(constantArrayType);
 
             StringBuilder fixedBufferFields = new();
 
@@ -451,7 +465,7 @@ public static class BindingGenerator
                         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
                         get
                         {
-                            if (index >= 16)
+                            if (index >= {{arraySize}})
                                 throw new System.ArgumentOutOfRangeException($"Index {index} is out of range.");
 
                             fixed ({{typeName}}* pThis = &Item0)
@@ -877,7 +891,7 @@ public static class BindingGenerator
         }
 
         if (type is ConstantArrayType constantArrayType)
-            return GetTypeName(constantArrayType.ElementType) + "*";
+            return GetTypeName(constantArrayType.ElementType);
 
         if (type is ElaboratedType elaboratedType)
         {
