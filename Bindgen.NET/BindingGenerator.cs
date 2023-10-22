@@ -904,7 +904,7 @@ public static class BindingGenerator
         }
 
         if (type is EnumType enumType)
-            return enumType.Decl.Name;
+            return GetCursorName(enumType.Decl);
 
         if (type is FunctionProtoType functionProtoType)
             return !_options.GenerateFunctionPointers ? "System.IntPtr" : GetCSharpFunctionPointer(functionProtoType);
