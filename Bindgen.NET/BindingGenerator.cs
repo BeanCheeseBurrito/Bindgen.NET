@@ -392,7 +392,7 @@ public static class BindingGenerator
 
         return $@"
             {(_options.GenerateSuppressGcTransition ? "[System.Runtime.InteropServices.SuppressGCTransition]" : string.Empty)}
-            [System.Runtime.InteropServices.DllImport(BindgenInternal.DllImportPath, CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+            [System.Runtime.InteropServices.DllImport(BindgenInternal.DllImportPath, EntryPoint = ""{GetValidIdentifier(functionDecl.NameInfoName, false)}"", CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
             public static extern {GetTypeName(functionDecl.ReturnType)} {GetValidIdentifier(functionDecl.Name)}({string.Join(", ", parameters)});
         ";
     }
@@ -926,8 +926,20 @@ public static class BindingGenerator
         return "UNHANDLED_TYPE";
     }
 
-    private static string GetValidIdentifier(string identifier)
+    private static string GetValidIdentifier(string identifier, bool remap = true)
     {
+        if (remap)
+        {
+            foreach ((string prefix, string replacement) in _options.RemappedPrefixes)
+            {
+                if (!identifier.StartsWith(prefix, StringComparison.InvariantCulture))
+                    continue;
+
+                identifier = replacement + identifier[prefix.Length..];
+                break;
+            }
+        }
+
         switch (identifier)
         {
             case "abstract":
@@ -1008,16 +1020,8 @@ public static class BindingGenerator
             case "volatile":
             case "while":
                 return "@" + identifier;
+            default:
+                return identifier;
         }
-
-        foreach ((string prefix, string replacement) in _options.RemappedPrefixes)
-        {
-            if (!identifier.StartsWith(prefix, StringComparison.InvariantCulture))
-                continue;
-
-            return replacement + identifier[prefix.Length..];
-        }
-
-        return identifier;
     }
 }
