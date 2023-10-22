@@ -1008,8 +1008,16 @@ public static class BindingGenerator
             case "volatile":
             case "while":
                 return "@" + identifier;
-            default:
-                return identifier;
         }
+
+        foreach ((string prefix, string replacement) in _options.RemappedPrefixes)
+        {
+            if (!identifier.StartsWith(prefix, StringComparison.InvariantCulture))
+                continue;
+
+            return replacement + identifier[prefix.Length..];
+        }
+
+        return identifier;
     }
 }

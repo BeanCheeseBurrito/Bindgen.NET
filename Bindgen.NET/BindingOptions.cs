@@ -26,6 +26,11 @@ public class BindingOptions
     public List<string> SystemIncludeDirectories { get; set; } = new();
 
     /// <summary>
+    /// Prefixes and their replacement string. An empty replacement string can be used to strip prefixes.
+    /// </summary>
+    public List<(string prefix, string replacement)> RemappedPrefixes { get; set; } = new();
+
+    /// <summary>
     /// The root namespace of the generated bindings. This defaults to "Bindings"
     /// </summary>
     public string Namespace { get; set; } = "Bindings";
