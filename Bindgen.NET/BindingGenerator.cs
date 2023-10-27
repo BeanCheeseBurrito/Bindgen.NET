@@ -219,7 +219,7 @@ public static class BindingGenerator
         return recordDecl;
     }
 
-    private static bool IsType<T>(Type type, [MaybeNullWhen(false)] out T value) where T : Type
+    private static bool IsType<T>(Type type, [MaybeNullWhen(false)] out T value) where T : Type?
     {
         if (type is T t)
         {
@@ -404,17 +404,21 @@ public static class BindingGenerator
 
         string recordName = GetRemappedCursorName(recordDecl);
 
-        FieldDecl[] fieldsDecls = recordDecl.CursorChildren
+        FieldDecl[] fieldsDecls = recordDecl.Decls
             .OfType<FieldDecl>()
             .ToArray();
 
-        FieldDecl[] fixedBufferFieldDecls = recordDecl.CursorChildren
+        IndirectFieldDecl[] indirectFieldDecls = recordDecl.Decls
+            .OfType<IndirectFieldDecl>()
+            .ToArray();
+
+        FieldDecl[] fixedBufferFieldDecls = recordDecl.Decls
             .OfType<FieldDecl>()
             .Where(fieldDecl => fieldDecl.Type is ConstantArrayType)
             .Where(fieldDecl => !IsSupportedFixedSizedBufferType(GetTypeName(((ConstantArrayType)fieldDecl.Type).ElementType)))
             .ToArray();
 
-        RecordDecl[] recordFieldsDecls = recordDecl.CursorChildren
+        RecordDecl[] recordFieldsDecls = recordDecl.Decls
             .OfType<RecordDecl>()
             .ToArray();
 
@@ -428,6 +432,9 @@ public static class BindingGenerator
             string fieldName = GetValidIdentifier(fieldDecl.Name);
             string typeName = GetRemappedTypeName(fieldDecl.Type);
 
+            if (fieldDecl.IsAnonymousField)
+                fieldName = GetRemappedTypeName(fieldDecl.Type) + "_Field";
+
             if (fieldDecl.Type is ConstantArrayType constantArrayType && IsSupportedFixedSizedBufferType(GetTypeName(constantArrayType.ElementType)))
             {
                 int size = GetConstantArraySize(constantArrayType);
@@ -440,7 +447,25 @@ public static class BindingGenerator
 
             bool commentFunctionPointer = IsType<FunctionProtoType>(fieldDecl.Type, out FunctionProtoType? functionProtoType) && !_options.GenerateFunctionPointers;
 
-            fields.AppendLine(CultureInfo.InvariantCulture, $"public {typeName} {GetValidIdentifier(fieldDecl.Name)}; {(commentFunctionPointer ? "// " + GetCSharpFunctionPointer(functionProtoType!) : string.Empty)}");
+            fields.AppendLine(CultureInfo.InvariantCulture, $"public {typeName} {fieldName}; {(commentFunctionPointer ? "// " + GetCSharpFunctionPointer(functionProtoType!) : string.Empty)}");
+        }
+
+        foreach (IndirectFieldDecl indirectFieldDecl in indirectFieldDecls)
+        {
+            IDeclContext declContext = indirectFieldDecl.AnonField.DeclContext!;
+
+            if (declContext is RecordDecl contextRecordDecl)
+            {
+                string typeName = GetRemappedTypeName(indirectFieldDecl.Type);
+                string declContextName = GetRemappedCursorName(contextRecordDecl);
+                string fieldName = GetValidIdentifier(indirectFieldDecl.Name);
+
+                if (IsAnonymous(indirectFieldDecl.Type))
+                    typeName = $"{declContextName}.{typeName}";
+
+                fields.AppendLine(CultureInfo.InvariantCulture,
+                    $"public ref {typeName} {fieldName} => ref {declContextName}_Field.{fieldName};");
+            }
         }
 
         foreach (FieldDecl fieldDecl in fixedBufferFieldDecls)
@@ -495,7 +520,6 @@ public static class BindingGenerator
         foreach (RecordDecl recordFieldDecl in recordFieldsDecls)
             fields.AppendLine(GenerateRecordDecl(recordFieldDecl));
 
-
         return $@"
             {(recordDecl.IsUnion ? "[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]" : "")}
             public partial struct {recordName}
@@ -519,7 +543,7 @@ public static class BindingGenerator
         }
 
         return $@"
-            public enum {GetCursorName(enumDecl)} : {GetIntegerName(enumDecl.IntegerType.Handle.SizeOf, !hasNegatives, "INVALID_ENUM_INTEGER")}
+            public enum {GetCursorName(enumDecl)} : {GetIntegerName(enumDecl.IntegerType.Handle.SizeOf, hasNegatives, "INVALID_ENUM_INTEGER")}
             {{ 
                 {string.Join(",\n", enumMembers)}
             }}
@@ -654,6 +678,19 @@ public static class BindingGenerator
         return $"delegate* unmanaged<{string.Join(", ", parameters)}>";
     }
 
+    private static bool IsAnonymous(Type type)
+    {
+        string? cursorName = null;
+
+        if (IsType(type, out RecordType? recordType))
+            cursorName = GetCursorName(recordType!.Decl);
+
+        if (IsType(type, out EnumType? enumType))
+            cursorName = GetCursorName(enumType!.Decl);
+
+        return cursorName?.StartsWith(AnonymousPrefix, StringComparison.InvariantCulture) ?? false;
+    }
+
     private static string GetAnonymousName(Cursor cursor, string kind)
     {
         cursor.Location.GetFileLocation(out CXFile file, out uint line, out uint column, out _);
@@ -672,6 +709,9 @@ public static class BindingGenerator
                 name.StartsWith("struct (unnamed", StringComparison.Ordinal) ||
                 name.StartsWith("union (unnamed", StringComparison.Ordinal) ||
                 name.StartsWith("enum (unnamed", StringComparison.Ordinal) ||
+                name.StartsWith("struct (anonymous", StringComparison.Ordinal) ||
+                name.StartsWith("union (anonymous", StringComparison.Ordinal) ||
+                name.StartsWith("enum (anonymous", StringComparison.Ordinal) ||
                 name.StartsWith("(unnamed struct", StringComparison.Ordinal) ||
                 name.StartsWith("(unnamed union", StringComparison.Ordinal) ||
                 name.StartsWith("(unnamed enum", StringComparison.Ordinal);
@@ -720,8 +760,8 @@ public static class BindingGenerator
             FieldDecl? matchingField = parentRecordDecl.Fields
                 .FirstOrDefault(fieldDecl => fieldDecl.Type.CanonicalType == recordDecl.TypeForDecl.CanonicalType);
 
-            if (matchingField is not null)
-                name = $"{GetValidIdentifier(matchingField.Name)}_AnonymousRecord";
+            if (matchingField is not null && !string.IsNullOrEmpty(matchingField.Name))
+                return $"{GetValidIdentifier(matchingField.Name)}_AnonymousRecord";
         }
 
         return name;
@@ -738,8 +778,8 @@ public static class BindingGenerator
             FieldDecl? matchingField = parentRecordDecl.Fields
                 .FirstOrDefault(fieldDecl => fieldDecl.Type.CanonicalType == recordDecl.TypeForDecl.CanonicalType);
 
-            if (matchingField is not null)
-                name = $"{GetValidIdentifier(matchingField.Name)}_AnonymousRecord";
+            if (matchingField is not null && !string.IsNullOrEmpty(matchingField.Name))
+                return $"{GetValidIdentifier(matchingField.Name)}_AnonymousRecord";
         }
 
         return name;
