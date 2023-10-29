@@ -507,10 +507,11 @@ public static class BindingGenerator
                 """;
 
             string fixedBufferSource = $$"""
-                public partial struct {{fieldName}}
+                public partial struct {{fieldName}}{{(_options.GenerateStructEqualityFunctions ? $" : System.IEquatable<{fieldName}> " : "")}}
                 {
                     {{fixedBufferFields}}
                     {{indexer}}
+                    {{(_options.GenerateStructEqualityFunctions ? GenerateRecordEqualityFunctions(fieldName) : "")}}
                 }
             """;
 
@@ -522,9 +523,10 @@ public static class BindingGenerator
 
         return $@"
             {(recordDecl.IsUnion ? "[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]" : "")}
-            public partial struct {recordName}
+            public partial struct {recordName}{(_options.GenerateStructEqualityFunctions ? $" : System.IEquatable<{recordName}> " : "")}
             {{
                 {fields}
+                {(_options.GenerateStructEqualityFunctions ? GenerateRecordEqualityFunctions(recordName) : "")}
             }} 
         ";
     }
@@ -669,6 +671,51 @@ public static class BindingGenerator
         string value = GetSourceRangeContents(translationUnitHandle, sourceRange);
 
         return $"const __auto_type {MacroPrefix}{macro.Name} = {value};";
+    }
+
+    private static string GenerateRecordEqualityFunctions(string recordName)
+    {
+        return $@"
+            public bool Equals({recordName} other)
+            {{
+                fixed ({recordName}* __self = &this)
+                {{
+                    return System.MemoryExtensions.SequenceEqual(
+                        new System.ReadOnlySpan<byte>((byte*)__self, sizeof({recordName})),
+                        new System.ReadOnlySpan<byte>((byte*)&other, sizeof({recordName}))
+                    );
+                }}
+            }}
+
+            public override bool Equals(object? obj)
+            {{
+                return obj is {recordName} other && Equals(other);
+            }}
+
+            public static bool operator ==({recordName} left, {recordName} right)
+            {{
+                return left.Equals(right);
+            }}
+
+            public static bool operator !=({recordName} left, {recordName} right)
+            {{
+                return !(left == right);
+            }}
+
+            public override int GetHashCode()
+            {{
+                fixed ({recordName}* __self = &this)
+                {{
+#if NET6_0_OR_GREATER
+                    System.HashCode hash = new System.HashCode();
+                    hash.AddBytes(new System.ReadOnlySpan<byte>((byte*)__self, sizeof({recordName})));
+                    return hash.ToHashCode();
+#else
+                    return base.GetHashCode();
+#endif
+                }}
+            }}
+        ";
     }
 
     private static string GetCSharpFunctionPointer(FunctionProtoType functionProtoType)

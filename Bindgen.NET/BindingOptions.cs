@@ -96,6 +96,12 @@ public class BindingOptions
     public bool GenerateSuppressGcTransition { get; set; }
 
     /// <summary>
+    /// If set to <c>true</c>, all structs will be generated with equality functions and operators. This defaults to <c>false</c>.
+    /// </summary>
+    /// <returns></returns>
+    public bool GenerateStructEqualityFunctions { get; set; }
+
+    /// <summary>
     /// Sets the max diagnostic level to log to the console. This defaults to <c>DiagnosticLevel.Info</c>.
     /// </summary>
     public DiagnosticLevel DiagnosticLevel { get; set; } = DiagnosticLevel.Info;
