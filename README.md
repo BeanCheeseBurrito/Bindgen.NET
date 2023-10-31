@@ -65,7 +65,8 @@ BindingOptions exampleConfig = new()
     GenerateFunctionPointers = true,
     GenerateMacros = true,
     GenerateExternVariables = true,
-    GenerateSuppressGcTransition = true
+    GenerateSuppressGcTransition = true,
+    GenerateStructEqualityFunctions = true
 };
 
 string output = BindingGenerator.Generate(exampleConfig);
@@ -73,4 +74,6 @@ string output = BindingGenerator.Generate(exampleConfig);
 
 A runnable example can be found [here](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET.Example/Program.cs).
 
-An example of generated bindings can be found in [here](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET.Example/GeneratedExample.cs).
+A basic example of generated bindings can be found in [here](https://github.com/BeanCheeseBurrito/Bindgen.NET/blob/main/Bindgen.NET.Example/GeneratedExample.cs).
+
+A real world example of generated bindings can be seen in the [Flecs.NET](https://github.com/BeanCheeseBurrito/Flecs.NET/tree/main) repo [here](https://github.com/BeanCheeseBurrito/Flecs.NET/blob/main/src/Flecs.NET.Bindings/Flecs.g.cs).
