@@ -31,6 +31,14 @@ public class BindingOptions
     public List<(string prefix, string replacement)> RemappedPrefixes { get; set; } = new();
 
     /// <summary>
+    /// Maps the define constants to a given dll import path.
+    /// Define constants will be evaluated in the given order using #if preprocessor statements.
+    /// Generated bindings will fall back to the dll import path specified in <see cref="DllImportPath"/>
+    /// if no define constants are matched.
+    /// </summary>
+    public List<(string DefineConstant, string DllImportPath)> RemappedDefineConstantsToDllImportPaths { get; set; } = new();
+
+    /// <summary>
     /// The root namespace of the generated bindings. This defaults to "Bindings"
     /// </summary>
     public string Namespace { get; set; } = "Bindings";

@@ -17,7 +17,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Version>0.1.7</Version>
+        <Version>0.1.8</Version>
         <Title>Bindgen.NET</Title>
         <Authors>BeanCheeseBurrito</Authors>
         <Description>Generate C# bindings from C headers.</Description>

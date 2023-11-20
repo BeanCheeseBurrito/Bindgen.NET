@@ -285,11 +285,31 @@ public static class BindingGenerator
     private static string GenerateBindgenInternal()
     {
         string[] quotedFilePaths = _options.DllFilePaths.Select(path => "\"" + path + "\"").ToArray();
+        string dllImportPath = $"public const string DllImportPath = \"{_options.DllImportPath}\";";
+
+        if (_options.RemappedDefineConstantsToDllImportPaths.Count > 0)
+        {
+            StringBuilder str = new();
+
+            for (int i = 0; i < _options.RemappedDefineConstantsToDllImportPaths.Count; i++)
+            {
+                (string defineConstant, string dllImportPath) pair = _options.RemappedDefineConstantsToDllImportPaths[i];
+
+                str.AppendLine(i == 0 ? $"#if {pair.defineConstant}" : $"#elif {pair.defineConstant}");
+                str.AppendLine(CultureInfo.InvariantCulture, $"            public const string DllImportPath = \"{pair.dllImportPath}\";");
+            }
+
+            str.AppendLine("#else");
+            str.Append("            " + dllImportPath);
+            str.AppendLine("#endif");
+
+            dllImportPath = str.ToString();
+        }
 
         return $$"""
             public partial class BindgenInternal
             {
-                public const string DllImportPath = "{{_options.DllImportPath}}";
+                {{dllImportPath}}
 
                 static BindgenInternal()
                 {
