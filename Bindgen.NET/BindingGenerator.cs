@@ -615,7 +615,7 @@ public static class BindingGenerator
                 expression = init.Type.Kind switch
                 {
                     CXTypeKind.CXType_Double =>  result.AsDouble.ToString(CultureInfo.InvariantCulture),
-                    CXTypeKind.CXType_Float =>  ((float)result.AsDouble).ToString(CultureInfo.InvariantCulture),
+                    CXTypeKind.CXType_Float =>  ((float)result.AsDouble).ToString(CultureInfo.InvariantCulture) + "f",
                     CXTypeKind.CXType_LongDouble =>  ((decimal)result.AsDouble).ToString(CultureInfo.InvariantCulture),
                     _ => $"INVALID_FLOAT_{init.Type.Kind}"
                 };
