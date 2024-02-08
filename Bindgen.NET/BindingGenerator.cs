@@ -1024,6 +1024,9 @@ public static class BindingGenerator
             if (pointerType.PointeeType is FunctionProtoType)
                 return GetTypeName(pointerType.PointeeType);
 
+            if (pointerType.PointeeType.AsString == "FILE")
+                return "void*";
+
             return GetTypeName(pointerType.PointeeType) + "*";
         }
 
