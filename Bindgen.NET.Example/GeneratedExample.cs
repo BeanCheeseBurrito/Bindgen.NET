@@ -5,7 +5,7 @@ namespace ExampleNamespace
     public static unsafe partial class ExampleClass
     {
         [System.Runtime.InteropServices.SuppressGCTransition]
-        [System.Runtime.InteropServices.DllImport(BindgenInternal.DllImportPath, CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+        [System.Runtime.InteropServices.DllImport(BindgenInternal.DllImportPath, EntryPoint = "example_function", CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
         public static extern byte example_function(example_struct_t example_parameter);
 
         public partial struct example_struct_t
@@ -15,7 +15,7 @@ namespace ExampleNamespace
             public fixed uint array[4];
         }
 
-        public enum example_enum_t : int
+        public enum example_enum_t : uint
         {
             red = 0,
             green = 1,
@@ -63,7 +63,9 @@ namespace ExampleNamespace
         {
             public static readonly System.Collections.Generic.List<string> DllFilePaths;
 
-            public static System.IntPtr _libraryHandle = System.IntPtr.Zero;
+            public static System.IntPtr LibraryHandle = System.IntPtr.Zero;
+
+            public static readonly object Lock = new object ();
 
             public static bool IsLinux => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
 
@@ -120,12 +122,12 @@ namespace ExampleNamespace
             public static System.IntPtr GetExport(string symbol)
             {
 #if NET5_0_OR_GREATER
-            return System.Runtime.InteropServices.NativeLibrary.GetExport(_libraryHandle, symbol);
+            return System.Runtime.InteropServices.NativeLibrary.GetExport(LibraryHandle, symbol);
 #else
                 if (IsLinux)
                 {
                     GetLastErrorLinux();
-                    System.IntPtr handle = GetExportLinux(_libraryHandle, symbol);
+                    System.IntPtr handle = GetExportLinux(LibraryHandle, symbol);
                     if (handle != System.IntPtr.Zero)
                         return handle;
                     byte* errorResult = GetLastErrorLinux();
@@ -138,7 +140,7 @@ namespace ExampleNamespace
                 if (IsOsx)
                 {
                     GetLastErrorOsx();
-                    System.IntPtr handle = GetExportOsx(_libraryHandle, symbol);
+                    System.IntPtr handle = GetExportOsx(LibraryHandle, symbol);
                     if (handle != System.IntPtr.Zero)
                         return handle;
                     byte* errorResult = GetLastErrorOsx();
@@ -150,7 +152,7 @@ namespace ExampleNamespace
 
                 if (IsWindows)
                 {
-                    System.IntPtr handle = GetExportWindows(_libraryHandle, symbol);
+                    System.IntPtr handle = GetExportWindows(LibraryHandle, symbol);
                     if (handle != System.IntPtr.Zero)
                         return handle;
                     int errorCode = GetLastErrorWindows();
@@ -173,45 +175,51 @@ namespace ExampleNamespace
                     fileExtension = ".dll";
                 else
                     throw new System.InvalidOperationException("Can't determine native library file extension for the current system.");
+                System.IntPtr handle = default;
                 foreach (string dllFilePath in DllFilePaths)
                 {
                     string fileName = System.IO.Path.GetFileName(dllFilePath);
                     string parentDir = $"{dllFilePath}/..";
                     string searchDir = System.IO.Path.IsPathRooted(dllFilePath) ? System.IO.Path.GetFullPath(parentDir) + "/" : System.IO.Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory + parentDir) + "/";
-                    if (TryLoad($"{searchDir}{fileName}", out _libraryHandle))
-                        return;
-                    if (TryLoad($"{searchDir}{fileName}{fileExtension}", out _libraryHandle))
-                        return;
-                    if (TryLoad($"{searchDir}lib{fileName}", out _libraryHandle))
-                        return;
-                    if (TryLoad($"{searchDir}lib{fileName}{fileExtension}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}{fileName}", out handle))
+                        goto Return;
+                    if (TryLoad($"{searchDir}{fileName}{fileExtension}", out handle))
+                        goto Return;
+                    if (TryLoad($"{searchDir}lib{fileName}", out handle))
+                        goto Return;
+                    if (TryLoad($"{searchDir}lib{fileName}{fileExtension}", out handle))
+                        goto Return;
                     if (!fileName.StartsWith("lib") || fileName == "lib")
                         continue;
                     string unprefixed = fileName.Substring(4);
-                    if (TryLoad($"{searchDir}{unprefixed}", out _libraryHandle))
-                        return;
-                    if (TryLoad($"{searchDir}{unprefixed}{fileExtension}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}{unprefixed}", out handle))
+                        goto Return;
+                    if (TryLoad($"{searchDir}{unprefixed}{fileExtension}", out handle))
+                        goto Return;
                 }
 
 #if NET7_0_OR_GREATER
-                _libraryHandle = System.Runtime.InteropServices.NativeLibrary.GetMainProgramHandle();
+                handle = System.Runtime.InteropServices.NativeLibrary.GetMainProgramHandle();
 #else
                 if (IsLinux)
-                    _libraryHandle = LoadLibraryLinux(null, 0x101);
+                    handle = LoadLibraryLinux(null, 0x101);
                 else if (IsOsx)
-                    _libraryHandle = LoadLibraryOsx(null, 0x101);
+                    handle = LoadLibraryOsx(null, 0x101);
                 else if (IsWindows)
-                    _libraryHandle = GetModuleHandle(null);
+                    handle = GetModuleHandle(null);
 #endif
+                Return:
+                    LibraryHandle = handle;
             }
 
             public static void* LoadDllSymbol(string variableSymbol, out void* field)
             {
-                if (_libraryHandle == System.IntPtr.Zero)
-                    ResolveLibrary();
-                return field = (void*)GetExport(variableSymbol);
+                lock (Lock)
+                {
+                    if (LibraryHandle == System.IntPtr.Zero)
+                        ResolveLibrary();
+                    return field = (void*)GetExport(variableSymbol);
+                }
             }
         }
     }

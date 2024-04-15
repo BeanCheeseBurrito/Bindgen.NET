@@ -8,7 +8,9 @@ internal static class Sources
         {
             public static readonly System.Collections.Generic.List<string> DllFilePaths;
 
-            public static System.IntPtr _libraryHandle = System.IntPtr.Zero;
+            public static System.IntPtr LibraryHandle = System.IntPtr.Zero;
+            
+            public static readonly object Lock = new object();
 
             public static bool IsLinux => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
 
@@ -67,12 +69,12 @@ internal static class Sources
             public static System.IntPtr GetExport(string symbol)
             {
         #if NET5_0_OR_GREATER
-                return System.Runtime.InteropServices.NativeLibrary.GetExport(_libraryHandle, symbol);
+                return System.Runtime.InteropServices.NativeLibrary.GetExport(LibraryHandle, symbol);
         #else
                 if (IsLinux)
                 {
                     GetLastErrorLinux();
-                    System.IntPtr handle = GetExportLinux(_libraryHandle, symbol);
+                    System.IntPtr handle = GetExportLinux(LibraryHandle, symbol);
 
                     if (handle != System.IntPtr.Zero)
                         return handle;
@@ -89,7 +91,7 @@ internal static class Sources
                 if (IsOsx)
                 {
                     GetLastErrorOsx();
-                    System.IntPtr handle = GetExportOsx(_libraryHandle, symbol);
+                    System.IntPtr handle = GetExportOsx(LibraryHandle, symbol);
 
                     if (handle != System.IntPtr.Zero)
                         return handle;
@@ -105,7 +107,7 @@ internal static class Sources
 
                 if (IsWindows)
                 {
-                    System.IntPtr handle = GetExportWindows(_libraryHandle, symbol);
+                    System.IntPtr handle = GetExportWindows(LibraryHandle, symbol);
 
                     if (handle != System.IntPtr.Zero)
                         return handle;
@@ -131,6 +133,8 @@ internal static class Sources
                     fileExtension = ".dll";
                 else
                     throw new System.InvalidOperationException("Can't determine native library file extension for the current system.");
+                    
+                System.IntPtr handle = default;
 
                 foreach (string dllFilePath in DllFilePaths)
                 {
@@ -140,48 +144,54 @@ internal static class Sources
                         ? System.IO.Path.GetFullPath(parentDir) + "/"
                         : System.IO.Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory + parentDir) + "/";
 
-                    if (TryLoad($"{searchDir}{fileName}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}{fileName}", out handle))
+                        goto Return;
 
-                    if (TryLoad($"{searchDir}{fileName}{fileExtension}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}{fileName}{fileExtension}", out handle))
+                        goto Return;
 
-                    if (TryLoad($"{searchDir}lib{fileName}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}lib{fileName}", out handle))
+                        goto Return;
 
-                    if (TryLoad($"{searchDir}lib{fileName}{fileExtension}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}lib{fileName}{fileExtension}", out handle))
+                        goto Return;
 
                     if (!fileName.StartsWith("lib") || fileName == "lib")
                         continue;
 
                     string unprefixed = fileName.Substring(4);
 
-                    if (TryLoad($"{searchDir}{unprefixed}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}{unprefixed}", out handle))
+                        goto Return;
 
-                    if (TryLoad($"{searchDir}{unprefixed}{fileExtension}", out _libraryHandle))
-                        return;
+                    if (TryLoad($"{searchDir}{unprefixed}{fileExtension}", out handle))
+                        goto Return;
                 }
 
         #if NET7_0_OR_GREATER
-                    _libraryHandle = System.Runtime.InteropServices.NativeLibrary.GetMainProgramHandle();
+                    handle = System.Runtime.InteropServices.NativeLibrary.GetMainProgramHandle();
         #else
                 if (IsLinux)
-                    _libraryHandle = LoadLibraryLinux(null, 0x101);
+                    handle = LoadLibraryLinux(null, 0x101);
                 else if (IsOsx)
-                    _libraryHandle = LoadLibraryOsx(null, 0x101);
+                    handle = LoadLibraryOsx(null, 0x101);
                 else if (IsWindows)
-                    _libraryHandle = GetModuleHandle(null);
+                    handle = GetModuleHandle(null);
         #endif
+        
+            Return:
+                LibraryHandle = handle;
             }
 
             public static void* LoadDllSymbol(string variableSymbol, out void* field)
             {
-                if (_libraryHandle == System.IntPtr.Zero)
-                    ResolveLibrary();
+                lock (Lock)
+                {
+                    if (LibraryHandle == System.IntPtr.Zero)
+                        ResolveLibrary();
 
-                return field = (void*)GetExport(variableSymbol);
+                    return field = (void*)GetExport(variableSymbol);
+                }
             }
         }
     """;
