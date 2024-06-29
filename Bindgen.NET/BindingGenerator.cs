@@ -327,6 +327,8 @@ public static class BindingGenerator
             .Where(cursor => cursor is FunctionDecl or RecordDecl or EnumDecl or VarDecl)
             .Where(cursor => !cursor.Location.IsInSystemHeader)
             .Where(IsUserInclude)
+            .GroupBy(cursor => cursor.Handle.Spelling.CString)
+            .Select(group => group.First()) // Duplicate cursors that have same spelling.
             .ToArray();
 
         FunctionDecl[] functionDecls = cursors
