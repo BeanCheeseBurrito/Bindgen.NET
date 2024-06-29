@@ -742,7 +742,7 @@ public static class BindingGenerator
     {
         List<string> parameters = functionProtoType.ParamTypes.Select(GetTypeName).ToList();
         parameters.Add(GetTypeName(functionProtoType.ReturnType));
-        return $"delegate* unmanaged<{string.Join(", ", parameters)}>";
+        return $"delegate*<{string.Join(", ", parameters)}>";
     }
 
     private static bool IsAnonymous(Type type)
@@ -1021,13 +1021,13 @@ public static class BindingGenerator
 
         if (type is PointerType pointerType)
         {
-            if (pointerType.PointeeType is FunctionProtoType)
+            if (pointerType.CanonicalType.PointeeType is FunctionProtoType)
                 return GetTypeName(pointerType.PointeeType);
 
             if (pointerType.PointeeType.AsString == "FILE")
                 return "void*";
 
-            return GetTypeName(pointerType.PointeeType) + "*";
+            return GetTypeName(pointerType.CanonicalType.PointeeType) + "*";
         }
 
         if (type is RecordType recordType)
