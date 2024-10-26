@@ -744,7 +744,7 @@ public static class BindingGenerator
     {
         List<string> parameters = functionProtoType.ParamTypes.Select(GetTypeName).ToList();
         parameters.Add(GetTypeName(functionProtoType.ReturnType));
-        return $"delegate*<{string.Join(", ", parameters)}>";
+        return $"delegate* unmanaged<{string.Join(", ", parameters)}>";
     }
 
     private static bool IsAnonymous(Type type)
