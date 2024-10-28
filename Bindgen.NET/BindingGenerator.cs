@@ -15,8 +15,6 @@ public static class BindingGenerator
     private const string MacroPrefix = "BindgenMacro";
     private const string AnonymousPrefix = "Anonymous";
 
-    private static readonly string BuiltInHeaderDirectory = Path.GetFullPath("BindgenBuiltInHeaders");
-
     private static BindingOptions _options = new ();
 
     /// <summary>
@@ -61,14 +59,6 @@ public static class BindingGenerator
             unsavedFiles.Add(CXUnsavedFile.Create(inputFileName, options.InputFile));
         else if (!Path.Exists(inputFileName))
             throw new ArgumentException($"Input file at path \"{inputFileName}\" does not exist.", nameof(options));
-
-        if (options.IncludeBuiltInClangHeaders)
-        {
-            arguments.Add($"-I{BuiltInHeaderDirectory}");
-
-            foreach ((string fileName, string fileContents) in ClangHeaders.Headers)
-                unsavedFiles.Add(CXUnsavedFile.Create(Path.Combine(BuiltInHeaderDirectory, fileName), fileContents));
-        }
 
         CXIndex index = CXIndex.Create();
         CXErrorCode errorCode = CXTranslationUnit.TryParse(index, inputFileName, arguments.ToArray(), unsavedFiles.ToArray(), flags, out CXTranslationUnit handle);
@@ -143,12 +133,6 @@ public static class BindingGenerator
         List<CXUnsavedFile> unsavedFiles = new();
         unsavedFiles.Add(CXUnsavedFile.Create(inputFileName, newFileBuilder.ToString()));
 
-        if (_options.IncludeBuiltInClangHeaders)
-        {
-            foreach ((string fileName, string fileContents) in ClangHeaders.Headers)
-                unsavedFiles.Add(CXUnsavedFile.Create(Path.Combine(BuiltInHeaderDirectory, fileName), fileContents));
-        }
-
         CXTranslationUnit handle = CXTranslationUnit.Parse(index, inputFileName, arguments.ToArray(), unsavedFiles.ToArray(), flags & ~CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord);
 
         foreach (CXUnsavedFile unsavedFile in unsavedFiles)
@@ -176,9 +160,6 @@ public static class BindingGenerator
     {
         cursor.Location.GetFileLocation(out CXFile file, out _, out _, out _);
         string fileName = file.Name.ToString();
-
-        if (fileName.StartsWith(BuiltInHeaderDirectory, StringComparison.Ordinal))
-            return false;
 
         return _options.SystemIncludeDirectories
             .Select(Path.GetFullPath)
