@@ -10,7 +10,7 @@ Download the [nuget package](https://www.nuget.org/packages/Bindgen.NET).
 dotnet add package Bindgen.NET --version *-*
 ```
 
-A runtime id is needed to resolve the ClangSharp native dependencies. Your project file should like like this.
+A runtime id is needed to resolve the ClangSharp native dependencies. Your project file should look like this.
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -40,32 +40,17 @@ BindingOptions exampleConfig = new()
     Class = "ExampleClass",
 
     DllImportPath = "libexample",
-    
-    // Some options require manually exporting symbols
-    // It will try different name combinations like DllImportAttribute
-    DllFilePaths = { 
-        "libexample", 
-        "example.so", 
-        // List your nuget native folders too
-        "runtimes/linux-x64/native/example",
-        "runtimes/osx-x64/native/libexample",
-        "runtimes/win-x64/native/libexample.dll" 
-    },
 
     // Pass raw source code instead
     // TreatInputFileAsRawSourceCode = true,
     InputFile = "path/header.h",
     OutputFile = "path/Header.cs",
     
-    // Optional included built-in clang headers
-    IncludeBuiltInClangHeaders = true,
     IncludeDirectories = { "path/include" },
     SystemIncludeDirectories = { "path/include" },
 
     GenerateFunctionPointers = true,
     GenerateMacros = true,
-    GenerateExternVariables = true,
-    GenerateSuppressGcTransition = true,
     GenerateStructEqualityFunctions = true
 };
 

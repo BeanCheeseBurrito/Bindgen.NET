@@ -11,9 +11,20 @@ public class BindingOptions
     public string InputFile { get; set; } = "";
 
     /// <summary>
-    /// File path to write generated source code to. This has no effect if <see cref="GenerateToFilesystem"/> is set to <c>false</c>. <code>Example: "Library.g.cs"</code>
+    /// File path to write generated source code to. If left null, nothing will be outputted to the filesystem. <code>Example: "Library.g.cs"</code>
     /// </summary>
-    public string OutputFile { get; set; } = "";
+    public string? OutputFile { get; set; }
+
+    /// <summary>
+    /// If <see cref="GenerateExternVariables"/> is set to true, a helper C file will be outputted to the filesystem.
+    /// This file needs to be compiled alongside the native code that you are generating bindings for.
+    /// </summary>
+    public string? NativeOutputFile { get; set; }
+
+    /// <summary>
+    /// A list of items to skip generating bindings for. This can be used to skip generation for structs, functions, macros, etc.
+    /// </summary>
+    public List<string> Ignored { get; set; } = new();
 
     /// <summary>
     /// Include directories for user headers. Declarations found in these headers will have bindings generated for them.
@@ -31,14 +42,6 @@ public class BindingOptions
     public List<(string prefix, string replacement)> RemappedPrefixes { get; set; } = new();
 
     /// <summary>
-    /// Maps the define constants to a given dll import path.
-    /// Define constants will be evaluated in the given order using #if preprocessor statements.
-    /// Generated bindings will fall back to the dll import path specified in <see cref="DllImportPath"/>
-    /// if no define constants are matched.
-    /// </summary>
-    public List<(string DefineConstant, string DllImportPath)> RemappedDefineConstantsToDllImportPaths { get; set; } = new();
-
-    /// <summary>
     /// The root namespace of the generated bindings. This defaults to "Bindings"
     /// </summary>
     public string Namespace { get; set; } = "Bindings";
@@ -52,11 +55,6 @@ public class BindingOptions
     /// Path to a native library that DllImportAttribute will use to load functions. This defaults to "LibraryPath"
     /// </summary>
     public string DllImportPath { get; set; } = "LibraryPath";
-
-    /// <summary>
-    /// File paths used to load native libraries. For each provided path, it will attempt to load a library using multiple different name combinations similar to DllImportAttribute.  This property is used to resolve symbols for extern variables and function pointers only. Methods are instead resolved using <see cref="DllImportPath"/> <code>Example: { "test", "libtest", "libtest.so", "runtimes/linux-x64/libtest" }</code>
-    /// </summary>
-    public List<string> DllFilePaths { get; set; } = new();
 
     /// <summary>
     /// List of C# warnings to suppress with #pragma. <code>Example: { "CA1069", "CA1401" }</code>
@@ -74,17 +72,14 @@ public class BindingOptions
     public bool TreatInputFileAsRawSourceCode { get; set; }
 
     /// <summary>
-    /// If set to <c>true</c>, generated bindings will be outputted to the filesystem using the path specified in <see cref="OutputFile"/>. This defaults to <c>true</c>.
-    /// </summary>
-    public bool GenerateToFilesystem { get; set; } = true;
-
-    /// <summary>
     /// If set to <c>true</c>, value-like macros will be generated. This defaults to <c>false</c>.
     /// </summary>
     public bool GenerateMacros { get; set; }
 
     /// <summary>
-    /// If set to <c>true</c>, extern variables will be generated. <see cref="DllFilePaths"/> should be configured when using this property. This defaults to <c>false</c>.
+    /// If set to <c>true</c>, extern variables will be generated.
+    /// A native helper file will be generated that must be compiled alongside the code you are generating bindings for.
+    /// <see cref="NativeOutputFile"/> should be configured when using this property. This defaults to <c>false</c>.
     /// </summary>
     public bool GenerateExternVariables { get; set; }
 

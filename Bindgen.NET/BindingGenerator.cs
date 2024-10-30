@@ -18,20 +18,6 @@ public static class BindingGenerator
     private static BindingOptions _options = new ();
 
     /// <summary>
-    /// Generates bindings for all configurations given.
-    /// </summary>
-    /// <param name="options">An array of configuration options to use when generating bindings.</param>
-    /// <returns>An array containing strings of generated source code for all binding configurations.</returns>
-    public static KeyValuePair<string, string>[] Generate(ReadOnlySpan<BindingOptions> options)
-    {
-        BindingOptions[] optionsArray = options.ToArray();
-
-        return optionsArray
-            .Select(option => new KeyValuePair<string, string>(option.OutputFile, Generate(option)))
-            .ToArray();
-    }
-
-    /// <summary>
     /// Generates bindings based on the values specified in the <c>options</c> parameter.
     /// </summary>
     /// <param name="options">The configuration options to use when generating bindings.</param>
@@ -39,26 +25,141 @@ public static class BindingGenerator
     public static string Generate(BindingOptions options)
     {
         _options = options;
+        (TranslationUnit translationUnit, CXIndex index) = ProcessTranslationUnit();
 
-        Diagnostic.CurrentDiagnosticLevel = options.DiagnosticLevel;
+        Cursor[] cursors = translationUnit.TranslationUnitDecl.CursorChildren
+            .Where(cursor => cursor is FunctionDecl or RecordDecl or EnumDecl or VarDecl)
+            .Where(cursor => !cursor.Location.IsInSystemHeader)
+            .Where(IsUserInclude)
+            .GroupBy(cursor => cursor.Handle.Spelling.CString)
+            .Select(group => group.First()) // Duplicate cursors that have same spelling.
+            .Where(cursor => !_options.Ignored.Contains(cursor.Handle.Spelling.CString))
+            .ToArray();
+
+        FunctionDecl[] functionDecls = cursors
+            .OfType<FunctionDecl>()
+            .OrderBy(x => x.Name)
+            .ToArray();
+
+        RecordDecl[] recordDecls = cursors
+            .OfType<RecordDecl>()
+            .OrderBy(x => x.Name)
+            .GroupBy(x => x.Name)
+            .Select(x => x.First())
+            .ToArray();
+
+        EnumDecl[] enumDecls = cursors
+            .OfType<EnumDecl>()
+            .OrderBy(x => x.Name)
+            .ToArray();
+
+        VarDecl[] varDecls = cursors
+            .OfType<VarDecl>()
+            .OrderBy(x => x.Name)
+            .ToArray();
+
+        VarDecl[] macroVarDecls = varDecls
+            .Where(x => x.Name.StartsWith(MacroPrefix, StringComparison.Ordinal))
+            .ToArray();
+
+        VarDecl[] externVarDecls = varDecls
+            .Where(x => x.HasExternalStorage)
+            .ToArray();
+
+        StringBuilder outputBuilder = new();
+        StringBuilder nativeOutputBuilder = new();
+
+        foreach (FunctionDecl functionDecl in functionDecls)
+            outputBuilder.AppendLine(GenerateFunctionDecl(functionDecl));
+
+        foreach (RecordDecl recordDecl in recordDecls)
+            outputBuilder.AppendLine(GenerateRecordDecl(recordDecl));
+
+        foreach (EnumDecl enumDecl in enumDecls)
+            outputBuilder.AppendLine(GenerateEnumDecl(enumDecl));
+
+        foreach (EnumDecl enumDecl in enumDecls)
+            outputBuilder.AppendLine(GenerateEnumDeclConstants(enumDecl));
+
+        if (_options.GenerateMacros)
+        {
+            foreach (VarDecl varDecl in macroVarDecls)
+                outputBuilder.AppendLine(GenerateMacroVarDecl(varDecl));
+        }
+
+        if (_options.GenerateExternVariables)
+        {
+            foreach (VarDecl varDecl in externVarDecls)
+                outputBuilder.AppendLine(GenerateExternVarDeclManagedGetter(varDecl));
+
+            foreach (VarDecl varDecl in externVarDecls)
+                outputBuilder.AppendLine(GenerateExternVarDeclField(varDecl));
+
+            foreach (VarDecl varDecl in externVarDecls)
+                outputBuilder.AppendLine(GenerateExternVarDeclProperty(varDecl));
+
+            foreach (VarDecl varDecl in externVarDecls)
+                nativeOutputBuilder.AppendLine(GenerateExternVarDeclNativeVariable(varDecl));
+
+            foreach (VarDecl varDecl in externVarDecls)
+                nativeOutputBuilder.AppendLine(GenerateExternVarDeclNativeGetter(varDecl));
+        }
+
+        string output = CodeFormatter.Format($$"""
+                #nullable enable
+                {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning disable {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
+                namespace {{_options.Namespace}}
+                {
+                    public static unsafe partial class {{_options.Class}}
+                    {
+                        {{outputBuilder}}
+                        {{GenerateBindgenInternal()}}
+                    }
+                }
+                {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning restore {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
+                #nullable disable
+            """);
+
+
+        if (options.OutputFile != null)
+        {
+            File.WriteAllText(options.OutputFile, output);
+            Diagnostic.Log(DiagnosticLevel.Info, $"Generated {Path.GetFullPath(options.OutputFile)} from {GetInputFileName()}");
+        }
+
+        if (options.NativeOutputFile != null)
+        {
+            File.WriteAllText(options.NativeOutputFile, nativeOutputBuilder.ToString());
+            Diagnostic.Log(DiagnosticLevel.Info, $"Generated {Path.GetFullPath(options.NativeOutputFile)} from {GetInputFileName()}");
+        }
+
+        translationUnit.Dispose();
+        index.Dispose();
+
+        return output;
+    }
+
+    private static (TranslationUnit, CXIndex) ProcessTranslationUnit()
+    {
+        Diagnostic.CurrentDiagnosticLevel = _options.DiagnosticLevel;
 
         string inputFileName = GetInputFileName();
 
-        List<string> arguments = options.IncludeDirectories
-            .Union(options.SystemIncludeDirectories)
+        List<string> arguments = _options.IncludeDirectories
+            .Union(_options.SystemIncludeDirectories)
             .Select(includeDirectory => "-I" + Path.GetFullPath(includeDirectory))
             .ToList();
 
         List<CXUnsavedFile> unsavedFiles = new();
         CXTranslationUnit_Flags flags = default;
 
-        if (options.GenerateMacros)
+        if (_options.GenerateMacros)
             flags |= CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord;
 
-        if (options.TreatInputFileAsRawSourceCode)
-            unsavedFiles.Add(CXUnsavedFile.Create(inputFileName, options.InputFile));
+        if (_options.TreatInputFileAsRawSourceCode)
+            unsavedFiles.Add(CXUnsavedFile.Create(inputFileName, _options.InputFile));
         else if (!Path.Exists(inputFileName))
-            throw new ArgumentException($"Input file at path \"{inputFileName}\" does not exist.", nameof(options));
+            throw new ArgumentException($"Input file at path \"{inputFileName}\" does not exist.", nameof(_options));
 
         CXIndex index = CXIndex.Create();
         CXErrorCode errorCode = CXTranslationUnit.TryParse(index, inputFileName, arguments.ToArray(), unsavedFiles.ToArray(), flags, out CXTranslationUnit handle);
@@ -70,22 +171,10 @@ public static class BindingGenerator
 
         TranslationUnit translationUnit = TranslationUnit.GetOrCreate(handle);
 
-        if (options.GenerateMacros)
+        if (_options.GenerateMacros)
             translationUnit = ProcessMacros(index, translationUnit, arguments.ToArray(), flags);
 
-        string output = GenerateTranslationUnitDecl(translationUnit.TranslationUnitDecl);
-        string formattedOutput = CodeFormatter.Format(output);
-
-        if (options.GenerateToFilesystem)
-        {
-            File.WriteAllText(options.OutputFile, formattedOutput);
-            Diagnostic.Log(DiagnosticLevel.Info, $"Generated {Path.GetFullPath(options.OutputFile)} from {inputFileName}");
-        }
-
-        translationUnit.Dispose();
-        index.Dispose();
-
-        return formattedOutput;
+        return (translationUnit, index);
     }
 
     private static string GetInputFileName()
@@ -233,24 +322,12 @@ public static class BindingGenerator
 
     private static bool IsSupportedFixedSizedBufferType(string typeName)
     {
-        switch (typeName)
+        return typeName switch
         {
-            case "bool":
-            case "byte":
-            case "char":
-            case "double":
-            case "float":
-            case "int":
-            case "long":
-            case "sbyte":
-            case "short":
-            case "ushort":
-            case "uint":
-            case "ulong":
-                return true;
-            default:
-                return false;
-        }
+            "bool" or "byte" or "char" or "double" or "float" or "int" or "long" or "sbyte" or "short" or "ushort"
+                or "uint" or "ulong" => true,
+            _ => false
+        };
     }
 
     private static string GenerateFixedBufferName(string name)
@@ -263,127 +340,18 @@ public static class BindingGenerator
         return name + "_Ptr";
     }
 
+    private static string GenerateExternGetterName(string name)
+    {
+        return name + "_BindgenGetExtern";
+    }
+
     private static string GenerateBindgenInternal()
     {
-        string[] quotedFilePaths = _options.DllFilePaths.Select(path => "\"" + path + "\"").ToArray();
-        string dllImportPath = $"public const string DllImportPath = \"{_options.DllImportPath}\";";
-
-        if (_options.RemappedDefineConstantsToDllImportPaths.Count > 0)
-        {
-            StringBuilder str = new();
-
-            for (int i = 0; i < _options.RemappedDefineConstantsToDllImportPaths.Count; i++)
-            {
-                (string defineConstant, string dllImportPath) pair = _options.RemappedDefineConstantsToDllImportPaths[i];
-
-                str.AppendLine(i == 0 ? $"#if {pair.defineConstant}" : $"#elif {pair.defineConstant}");
-                str.AppendLine(CultureInfo.InvariantCulture, $"            public const string DllImportPath = \"{pair.dllImportPath}\";");
-            }
-
-            str.AppendLine("#else");
-            str.Append("            " + dllImportPath);
-            str.AppendLine("#endif");
-
-            dllImportPath = str.ToString();
-        }
-
         return $$"""
             public partial class BindgenInternal
             {
-                {{dllImportPath}}
-
-                static BindgenInternal()
-                {
-                    DllFilePaths = new System.Collections.Generic.List<string> { {{string.Join(',', quotedFilePaths)}} };
-                }
+                public const string DllImportPath = @"{{_options.DllImportPath}}";
             }
-
-            {{Sources.Internal}}
-        """;
-    }
-
-    private static string GenerateTranslationUnitDecl(TranslationUnitDecl translationUnitDecl)
-    {
-        Cursor[] cursors = translationUnitDecl.CursorChildren
-            .Where(cursor => cursor is FunctionDecl or RecordDecl or EnumDecl or VarDecl)
-            .Where(cursor => !cursor.Location.IsInSystemHeader)
-            .Where(IsUserInclude)
-            .GroupBy(cursor => cursor.Handle.Spelling.CString)
-            .Select(group => group.First()) // Duplicate cursors that have same spelling.
-            .ToArray();
-
-        FunctionDecl[] functionDecls = cursors
-            .OfType<FunctionDecl>()
-            .OrderBy(x => x.Name)
-            .ToArray();
-
-        RecordDecl[] recordDecls = cursors
-            .OfType<RecordDecl>()
-            .OrderBy(x => x.Name)
-            .GroupBy(x => x.Name)
-            .Select(x => x.First())
-            .ToArray();
-
-        EnumDecl[] enumDecls = cursors
-            .OfType<EnumDecl>()
-            .OrderBy(x => x.Name)
-            .ToArray();
-
-        VarDecl[] varDecls = cursors
-            .OfType<VarDecl>()
-            .OrderBy(x => x.Name)
-            .ToArray();
-
-        VarDecl[] macroVarDecls = varDecls
-            .Where(x => x.Name.StartsWith(MacroPrefix, StringComparison.Ordinal))
-            .ToArray();
-
-        VarDecl[] externVarDecls = varDecls
-            .Where(x => x.HasExternalStorage)
-            .ToArray();
-
-        StringBuilder output = new();
-
-        foreach (FunctionDecl functionDecl in functionDecls)
-            output.AppendLine(GenerateFunctionDecl(functionDecl));
-
-        foreach (RecordDecl recordDecl in recordDecls)
-            output.AppendLine(GenerateRecordDecl(recordDecl));
-
-        foreach (EnumDecl enumDecl in enumDecls)
-            output.AppendLine(GenerateEnumDecl(enumDecl));
-
-        foreach (EnumDecl enumDecl in enumDecls)
-            output.AppendLine(GenerateEnumDeclConstants(enumDecl));
-
-        if (_options.GenerateMacros)
-        {
-            foreach (VarDecl varDecl in macroVarDecls)
-                output.AppendLine(GenerateMacroVarDecl(varDecl));
-        }
-
-        if (_options.GenerateExternVariables)
-        {
-            foreach (VarDecl varDecl in externVarDecls)
-                output.AppendLine(GenerateExternVarDeclField(varDecl));
-
-            foreach (VarDecl varDecl in externVarDecls)
-                output.AppendLine(GenerateExternVarDeclProperty(varDecl));
-        }
-
-        return $$"""
-            #nullable enable
-            {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning disable {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
-            namespace {{_options.Namespace}}
-            {
-                public static unsafe partial class {{_options.Class}}
-                {
-                    {{output}}
-                    {{GenerateBindgenInternal()}}
-                }
-            }
-            {{(_options.SuppressedWarnings.Count > 0 ? $"#pragma warning restore {string.Join(' ', _options.SuppressedWarnings)}" : string.Empty)}}
-            #nullable disable
         """;
     }
 
@@ -630,6 +598,31 @@ public static class BindingGenerator
             : $"public const {typeName} {GetValidIdentifier(varDecl.Name[MacroPrefix.Length..])} = {expression};";
     }
 
+    private static string GenerateExternVarDeclNativeVariable(VarDecl varDecl)
+    {
+        return $$"""
+            extern void* {{varDecl.Name}};
+            """;
+    }
+
+    private static string GenerateExternVarDeclNativeGetter(VarDecl varDecl)
+    {
+        return $$"""
+        void* {{GenerateExternGetterName(varDecl.Name)}}() {
+            return &{{varDecl.Name}};
+        }
+        """;
+    }
+
+    private static string GenerateExternVarDeclManagedGetter(VarDecl varDecl)
+    {
+        string validName = GetValidIdentifier(varDecl.Name);
+        return $$"""
+            [System.Runtime.InteropServices.DllImport(BindgenInternal.DllImportPath, EntryPoint = "{{GenerateExternGetterName(varDecl.Name)}}", CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+            private static extern void* {{GenerateExternGetterName(validName)}}();
+            """;
+    }
+
     private static string GenerateExternVarDeclField(VarDecl varDecl)
     {
         string validName = GetValidIdentifier(varDecl.Name);
@@ -645,9 +638,10 @@ public static class BindingGenerator
         string typeName = GetTypeName(varDecl.Type);
         string validName = GetValidIdentifier(varDecl.Name);
         string fieldName = GenerateExternFieldName(validName);
+        string getterName = GenerateExternGetterName(validName);
 
         // We can't use Unsafe.AsRef<T>(void*) because T can't be a pointer.
-        return $"public static ref {typeName} {validName} => ref *({typeName}*)({fieldName} == null ? BindgenInternal.LoadDllSymbol(\"{varDecl.Name}\", out {fieldName}) : {fieldName});";
+        return $"public static ref {typeName} {validName} => ref *({typeName}*)({fieldName} == null ? {fieldName} = {getterName}() : {fieldName});";
     }
 
     // This converts value-like macros to type-inferred variables so we can get access to it's type information.

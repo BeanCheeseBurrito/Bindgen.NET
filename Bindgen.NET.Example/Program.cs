@@ -1,4 +1,5 @@
-﻿using Bindgen.NET;
+﻿using System.IO;
+using Bindgen.NET;
 
 const string exampleSource = """
 // Bindgen.NET has clang headers built-in
@@ -26,10 +27,6 @@ bool example_function(example_struct_t example_parameter);
 #define ten (5 + five)
 #define world "World"
 #define hello_world "Hello " world
-
-// Extern variables
-extern example_struct_t extern_struct;
-extern void* extern_pointer;
 """;
 
 BindingOptions exampleConfig = new()
@@ -38,20 +35,17 @@ BindingOptions exampleConfig = new()
     Class = "ExampleClass",
 
     DllImportPath = "libexample",
-    DllFilePaths = { "libexample", "runtimes/linux-x64/native/libexample" },
-
-    IncludeBuiltInClangHeaders = true,
 
     TreatInputFileAsRawSourceCode = true,
     InputFile = exampleSource,
 
+    // Passing in the include headers provided by zig. See Bindgen.NET.Example.csproj on how to fetch zig's headers.
+    SystemIncludeDirectories = { Path.Combine(BuildConstants.ZigLibPath, "include") },
+
     SuppressedWarnings = { "CA1069" },
 
-    GenerateToFilesystem = false,
     GenerateFunctionPointers = true,
-    GenerateMacros = true,
-    GenerateExternVariables = true,
-    GenerateSuppressGcTransition = true
+    GenerateMacros = true
 };
 
 string generatedSource = BindingGenerator.Generate(exampleConfig);
