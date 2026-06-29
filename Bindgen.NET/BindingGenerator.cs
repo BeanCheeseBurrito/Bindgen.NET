@@ -322,7 +322,6 @@ public static class BindingGenerator
         value = default;
         return false;
     }
-
     private static IEnumerable<RecordDecl> GetRecordDecls(IEnumerable<Cursor> cursors)
     {
         return cursors
@@ -439,7 +438,7 @@ public static class BindingGenerator
             typeName = GetTypeName(autoType.GetDeducedType);
 
         if (type is ConstantArrayType constantArrayType)
-            typeName = $"{GetTypeName(constantArrayType.ElementType)}_{constantArrayType.Size}";
+            typeName = $"{GetTypeIdentifier(constantArrayType.ElementType)}_{constantArrayType.Size}";
 
         if (type is FunctionProtoType functionProtoType)
             typeName = GetCSharpFunctionPointer(functionProtoType);
@@ -451,7 +450,8 @@ public static class BindingGenerator
         {
             if (pointerType.CanonicalType.PointeeType is FunctionProtoType)
                 typeName = GetTypeName(pointerType.PointeeType);
-            else if (pointerType.PointeeType.AsString == "FILE")
+            else if (pointerType.PointeeType.AsString is "FILE" or "_IO_FILE"
+                || (pointerType.PointeeType.CanonicalType is RecordType fileRecordType && fileRecordType.Decl.Name == "_IO_FILE"))
                 typeName = "void*";
             else
                 typeName = GetTypeName(pointerType.CanonicalType.PointeeType) + "*";
@@ -665,9 +665,10 @@ public static class BindingGenerator
     private static string GenerateConstantArrayType(ConstantArrayType type)
     {
         string name = GetTypeName(type.ElementType);
+        string structName = GetTypeName(type);
         return GenerateOuterDeclarations(type, $$"""
             [InlineArray({{type.Size}})]
-            public partial struct {{name}}_{{type.Size}}
+            public partial struct {{structName}}
             {
                 public {{name}} Item0;
             }
@@ -912,6 +913,23 @@ public static class BindingGenerator
         string value = GetSourceRangeContents(translationUnitHandle, sourceRange);
 
         return $"const __auto_type {MacroPrefix}{macro.Name} = {value};";
+    }
+
+    /// <summary>
+    /// Returns <see cref="GetTypeName"/> mapped to a valid C# identifier by
+    /// replacing '*' with 'P' and every other non-identifier character with
+    /// '_', so array-of-function-pointer types (e.g. "delegate* unmanaged&lt;...&gt;")
+    /// yield a usable struct name.
+    /// </summary>
+    private static string GetTypeIdentifier(Type type)
+    {
+        string name = GetTypeName(type);
+
+        var sb = new StringBuilder(name.Length);
+        foreach (char c in name)
+            sb.Append(c == '*' ? 'P' : char.IsLetterOrDigit(c) || c == '_' ? c : '_');
+
+        return sb.ToString();
     }
 
     private static string GenerateRecordEqualityFunctions(string recordName)
